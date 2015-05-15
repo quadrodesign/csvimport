@@ -1,0 +1,424 @@
+<?php
+
+class shopCsvimportPluginBackendVerifidataController extends waLongActionController
+{
+    protected $product_model;
+    /**
+     * @var shopIndexSearch
+     */
+
+    public function execute()
+    {
+        try {
+            parent::execute();
+        } catch (waException $ex) {
+            if ($ex->getCode() == '302') {
+                echo json_encode(array('warning' => $ex->getMessage()));
+            } else {
+                echo json_encode(array('error' => $ex->getMessage()));
+            }
+        }
+    }
+
+    protected function finish($filename)
+    {
+        $this->info();
+        if ($this->getRequest()->post('cleanup')) {
+            return true;
+        }
+        return false;
+    }
+    
+    protected function init()
+    {
+        $this->data['info'] = waRequest::post();
+        $this->model = new waModel();
+        $this->product_model = new shopProductModel();
+        $this->feature_model =  new shopFeatureModel();
+        $fp = fopen($this->data['info']['path'].$this->data['info']['name_file'],'r');
+        
+        $this->data['header'] = $this->convert(fgetcsv($fp,0,';'));
+        $this->data['total_count'] = 0; 
+        
+        while( $line = fgetcsv($fp,0,';') )
+          {
+            $this->data['total_count']++;
+          }
+        fclose($fp);
+        
+        foreach($this->data['info'] as $key => $header)
+        {
+            $pos = strpos($header, 'features');
+            if($pos !== false)
+            {
+                $ident = explode(':',$header);
+                if ($ident[1] != '')
+                {
+                    $this->data['features'][$header]['key'] = $key;
+                    $feats = $this->feature_model->getByCode($ident[1]);
+                    
+                    $result = explode('.',$feats['type']);
+                    $and = $result[1] ? "AND type='".$result[1]."' " : "" ;
+                    $values = $this->model->query("SELECT value FROM shop_feature_values_".$result[0]." WHERE feature_id = '".$feats['id']."' ".$and)->fetchAll();
+                    $val = array();
+                    if($values)
+                    {
+                        foreach($values as $v)
+                        {
+                            $val[] = $v['value'];
+                        }
+                    }
+                    
+                    $this->data['features'][$header]['values'] = $val;//array_values($this->feature_model->getFeatureValues($feat));
+                    $this->data['features'][$header]['code'] = $ident[1];
+                    $this->data['features'][$header]['count'] = 0;
+                    $this->data['features'][$header]['name'] = $feats['name'];
+                    $feat = fopen($this->data['info']['path'].'new'.ucfirst($ident[1]).'.csv','w');
+                    fputcsv($feat, $this->reconvert($this->data['header']), ';');
+                    fclose($feat);
+                    unset($val);
+                }
+                
+            }
+            
+            if($this->data['info']['regim'] == 3)
+            {
+                $data = explode(':', $header);
+                if(is_numeric($key))
+                {
+                    if($data[0] == 'skus')
+                    {
+                        if($data[2] == 'stock')
+                        {
+                            $this->data['skus']['stocks'][$data[3]] = $key;
+                        }
+                    }              
+                }
+            }
+        }
+        
+        $config = $this->model->query("SELECT data FROM shop_csvimport_config WHERE name='".$this->data['info']['configName']."'")->fetchField();
+        $this->data['info']['config'] = $config ? (array)json_decode($config) : '';
+        
+        $upProd = fopen($this->data['info']['path'].'updateProd.csv','w');
+        fputcsv($upProd, $this->reconvert($this->data['header']), ';');
+        fclose($upProd);
+        
+        $ostat = fopen($this->data['info']['path'].'ostat.csv','w');
+        fputcsv($ostat, $this->reconvert($this->data['header']), ';');
+        fclose($ostat);
+        
+        $newProd = fopen($this->data['info']['path'].'newProd.csv','w');
+        fputcsv($newProd, $this->reconvert($this->data['header']), ';');
+        fclose($newProd);
+        
+        $upSkus = fopen($this->data['info']['path'].'updateSkus.csv','w');
+        fputcsv($upSkus, $this->reconvert($this->data['header']), ';');
+        fclose($upSkus);
+        
+        $newSkus = fopen($this->data['info']['path'].'newSkus.csv','w');
+        fputcsv($newSkus, $this->reconvert($this->data['header']), ';');
+        fclose($newSkus);
+        
+        $this->data['newProduct'] = 0; 
+        $this->data['ostat'] = 0;
+        $this->data['newSkus'] = 0; 
+        $this->data['updateProduct'] = 0; 
+        $this->data['updateSkus'] = 0;
+        $this->data['offset'] = 0;
+        $this->data['ready'] = true;
+        $this->data['timestamp'] = time();
+        
+    }
+
+    protected function restore()
+    {
+        $this->product_model = new shopProductModel();
+        $this->model = new waModel();
+        $this->feature_model =  new shopFeatureModel();
+    }
+    
+    protected function convert($str) 
+    {
+        foreach($str as $key => $s)
+        {
+            if($this->data['info']['charset'] == 'Windows-1251') {
+                $string[$key] = iconv("Windows-1251", "UTF-8", $s);
+            } else {
+                $string[$key] = $s;
+            }
+        }
+        return $string;
+    }
+    
+    protected function reconvert($str) 
+    {
+        foreach($str as $key => $s)
+        {
+            $string[$key] = iconv("UTF-8", "Windows-1251", $s);
+        }
+        return $string;
+    }
+
+
+    protected function isDone()
+    {
+        return $this->data['offset'] >= $this->data['total_count'];
+    }
+    
+    protected function getProductId($csvInfo)
+    {
+        $identifierId = $this->data['info']['id'];
+        $explodeData = explode(':', $this->data['info'][$identifierId]);
+        if($explodeData[1])
+        {
+            if($explodeData[0] == 'features')
+            {
+                $feats = $this->feature_model->getByCode($explodeData[1]);
+                    
+                $result = explode('.',$feats['type']);
+                $and = $result[1] ? "AND type='".$result[1]."' " : "" ;
+                $values = $this->model->query("SELECT * FROM shop_feature_values_".$result[0]." WHERE feature_id = '".$feats['id']."' ".$and)->fetchAll();
+                $val = array();
+                if($values)
+                {
+                    foreach($values as $v)
+                    {
+                        if(!empty($csvInfo[$identifierId]))
+                        {
+                            if($csvInfo[$identifierId] == $v['value'])
+                            {
+                                return $this->model->query("SELECT product_id FROM shop_product_features WHERE feature_id='".$v['feature_id']."' AND feature_value_id='".$v['id']."'")->fetchField();
+                            }
+                        }
+                    }
+                }
+                return false;
+            } 
+            elseif($explodeData[0] == 'skus')
+            {
+                $where = $explodeData[2].'='.$csvInfo[$identifierId];
+                return $this->model->query("SELECT product_id FROM shop_product_skus WHERE ".$where)->fetchField();
+            }
+            else
+            {
+                return false;
+            }
+        }
+        else
+        {
+            return $this->model->query("SELECT id FROM shop_product WHERE ".$explodeData[0]." = '".$csvInfo[$identifierId]."'")->fetchField();
+        }
+    }
+    
+    protected function step()
+    {
+        $limit = 100;
+        $start = $this->data['offset'];
+        $fp = fopen($this->data['info']['path'].$this->data['info']['name_file'],'r');
+        $this->data['header'] = $this->convert(fgetcsv($fp,0,';'));
+        $indicator = 0;
+        while($line = fgetcsv($fp,0,';'))
+        {
+            
+            if($indicator >= $this->data['offset'])
+            {
+                if(($this->data['offset'] - $start) <= $limit){
+                    $csvInfo = $this->convert($line);
+                    $productId = $this->getProductId($csvInfo);
+                    
+                    if($productId){
+                        $this->data['updateProduct']++;
+                        $upProd = fopen($this->data['info']['path'].'updateProd.csv','a');
+                        fputcsv($upProd, $this->reconvert($csvInfo), ';');
+                        fclose($upProd);
+                                              
+                        $skuName = $csvInfo[$this->data['info']['skuId'][1]];
+                        
+                        foreach($this->data['info']['separator'] as $key => $sku)
+                        {
+                            $skuName .= $sku;
+                            $skuName .= $csvInfo[$this->data['info']['skuId'][$key]];
+                        }
+                        
+                        $skuId = $this->model->query("SELECT id FROM shop_product_skus WHERE sku = '".$skuName."' AND product_id = '".$productId."'")->fetchField();
+                        if($skuId)
+                        {
+                            if($this->data['info']['regim'] == 3)
+                            {
+                                if(is_array($this->data['skus']['stocks']))
+                                {
+                                    $skus_model = new shopProductSkusModel();
+                                    $skuInfo = $skus_model->getSku($skuId);
+                                    unset($this->data['skus']['stocks'][0]);
+                                    $i = false;
+                                    foreach($this->data['skus']['stocks'] as $stock_id => $stock)
+                                    {
+                                        if($skuInfo){
+                                            $count = $skuInfo['stock'][$stock_id] ? $skuInfo['stock'][$stock_id] : 0;}
+                                        if($csvInfo[$stock]){
+                                            $csvInfo[$stock] = $count - $csvInfo[$stock];
+                                        }
+                                        
+                                        if($csvInfo[$stock] < 0) {
+                                            $i = true;
+                                        }
+                                        unset($count);
+                                    }
+                                    
+                                    if($i) {
+                                        $this->data['ostat']++;
+                                        $ostat = fopen($this->data['info']['path'].'ostat.csv','a');
+                                        fputcsv($ostat, $this->reconvert($csvInfo), ';');
+                                        fclose($ostat);
+                                    }
+                                }
+                            }
+                                
+                            $this->data['updateSkus']++;
+                            $upSkus = fopen($this->data['info']['path'].'updateSkus.csv','a');
+                            fputcsv($upSkus, $this->reconvert($csvInfo), ';');
+                            fclose($upSkus);
+                        }
+                        else
+                        {
+                            $this->data['newSkus']++;
+                            $newSkus = fopen($this->data['info']['path'].'newSkus.csv','a');
+                            fputcsv($newSkus, $this->reconvert($csvInfo), ';');
+                            fclose($newSkus);
+                        }
+                    }
+                    else
+                    {
+                        $this->data['newProduct']++;
+                        $this->data['newSkus']++;
+                        
+                        $newSkus = fopen($this->data['info']['path'].'newSkus.csv','a');
+                        fputcsv($newSkus, $this->reconvert($csvInfo), ';');
+                        fclose($newSkus);
+                        
+                        $newProd = fopen($this->data['info']['path'].'newProd.csv','a');
+                        fputcsv($newProd, $this->reconvert($csvInfo), ';');
+                        fclose($newProd);
+                    }
+                    
+                    foreach($this->data['features'] as $key => $feature)
+                    {
+                        if(!empty($csvInfo[$feature['key']]))
+                        {
+                            if(!in_array($csvInfo[$feature['key']], $feature['values']))
+                            {
+                                $this->data['features'][$key]['count']++;
+                                //$this->data['features'][$key]['info'] = $this->data['features'];
+                                $ident = explode(':',$key);
+                                $feat = fopen($this->data['info']['path'].'new'.ucfirst($ident[1]).'.csv','a');
+                                fputcsv($feat, $this->reconvert($csvInfo), ';');
+                                fclose($feat);
+                            }
+                        }
+                    }
+                    
+                } else {
+                    break;}
+                $this->data['offset'] += 1;
+            }
+            $indicator++;
+        }
+        fclose($fp);
+        
+        if($this->data['offset'] >= $this->data['total_count']) 
+        break;
+        sleep(1);
+    }
+
+
+    protected function info()
+    {
+        $interval = 0;
+        if (!empty($this->data['timestamp'])) {
+            $interval = time() - $this->data['timestamp'];
+        }
+        
+        $response = array(
+            'time'       => sprintf('%d:%02d:%02d', floor($interval / 3600), floor($interval / 60) % 60, $interval % 60),
+            'processId'  => $this->processId,
+            'progress'   => 0.0,
+            'ready'      => $this->isDone(),
+            'name'       => $this->data,
+            'offset' => $this->data['offset'],
+        );
+        $response['progress'] = ($this->data['offset'] / $this->data['total_count']) * 100;
+        $response['progress'] = sprintf('%0.3f%%', $response['progress']);
+        
+        if ($this->getRequest()->post('cleanup')) {
+            $response['report'] = $this->report();
+        }
+        
+        echo json_encode($response);
+    }
+    
+    protected function report()
+    {
+        $this->data['info']['config']['checkbox'] = (array)$this->data['info']['config']['checkbox'];
+        $newProd = $this->data['info']['config']['checkbox']['newProd'] == 'on' ? 'checked="checked"' : '';
+        $updateProd = $this->data['info']['config']['checkbox']['updateProd'] == 'on' ? 'checked="checked"' : '';
+        $newSkus = $this->data['info']['config']['checkbox']['newSkus'] == 'on' ? 'checked="checked"' : '';
+        $updateSkus = $this->data['info']['config']['checkbox']['updateSkus'] == 'on' ? 'checked="checked"' : '';
+        
+        $report = '<div class="field reportData">';
+        $report .= '<div class="value">';
+        $report .= '<div class="s-csv-importexport-stats">';
+        $report .= '<p>В CSV-файле обнаружена и готова к импорту следующая информация:</p>';
+        $report .= '<ul>';
+        $report .= '<li><input type="checkbox" '.$newProd.' name="checkbox[newProd]"/><i class="icon16 yes"></i>'.$this->data['newProduct'].' новых товара <a href="http://'.waRequest::server('HTTP_HOST').'/'.$this->data['info']['path'].'newProd.csv" download>CSV</a><br></li>';
+        $report .= '<li><input type="checkbox" '.$updateProd.' name="checkbox[updateProd]"/><i class="icon16 yes"></i>'.$this->data['updateProduct'].' товара будут обновлены <a href="http://'.waRequest::server('HTTP_HOST').'/'.$this->data['info']['path'].'updateProd.csv" download>CSV</a><br></li>';
+        $report .= '<li><input type="checkbox" '.$newSkus.' name="checkbox[newSkus]"/><i class="icon16 yes"></i>'.$this->data['newSkus'].' новых артикула <a href="http://'.waRequest::server('HTTP_HOST').'/'.$this->data['info']['path'].'newSkus.csv" download>CSV</a><br></li>';
+        $report .= '<li><input type="checkbox" '.$updateSkus.' name="checkbox[updateSkus]"/><i class="icon16 yes"></i>'.$this->data['updateSkus'].' артикула будут обновлены <a href="http://'.waRequest::server('HTTP_HOST').'/'.$this->data['info']['path'].'updateSkus.csv" download>CSV</a><br></li>';
+        
+        if($this->data['ostat'] > 0)
+        {
+            $report .= '<li><i class="icon16 yes"></i>'.$this->data['ostat'].' артикула имеют негативный остаток <a href="http://'.waRequest::server('HTTP_HOST').'/'.$this->data['info']['path'].'ostat.csv" download>CSV</a><br></li>';
+        }
+        
+        foreach($this->data['features'] as $f_id => $f)
+        {
+            if($f['count'] > 0)
+            {
+                $fid = explode(':', $f_id);
+                $this->data['info']['config']['checkbox']['features'] = (array)$this->data['info']['config']['checkbox']['features'];
+                $checked = $this->data['info']['config']['checkbox']['features'][$f['code']] == 'on' ? 'checked="checked"' : '';
+                $pole = $f['count'] > 4 ? 'полей' : 'поля' ;
+                $report .= '<li><input type="checkbox" '.$checked.' name="checkbox[features]['.$f['code'].']"/><i class="icon16 yes"></i>'.$f['count'].' '.$pole.' с новой характеристикой типа "'.$f['name'].'" <a href="http://'.waRequest::server('HTTP_HOST').'/'.$this->data['info']['path'].'new'.ucfirst($fid[1]).'.csv" download>CSV</a><br></li>';
+            }
+        }
+        
+        $report .= '<ul>';
+        $report .= '</div>';
+        $report .= '</div>';
+        $report .= '</div>';
+        
+        $report .= '<div class="field" style="margin-top: 30px;">';
+        $report .= '<div class="value" style="margin-left: 100px!important;">';
+        $report .= '<input type="button" id="productImport" class="button green" value="Импортировать">';
+        $report .= '</div>';
+        $report .= '</div>';        
+        
+//        $interval = 0;
+//        if (!empty($this->data['timestamp'])) {
+//            $interval = time() - $this->data['timestamp'];
+//            $interval = sprintf(_w('%02d hr %02d min %02d sec'), floor($interval / 3600), floor($interval / 60) % 60, $interval % 60);
+//            $report .= ' '.sprintf(_w('(total time: %s)'), $interval);
+//        }
+//        
+//        $report .= '</div>';
+        
+        return $report;
+    }
+    
+    private function error($message)
+    {
+        $path = wa()->getConfig()->getPath('log');
+        waFiles::create($path.'/shop/backtop.log');
+        waLog::log($message, 'shop/backtop.log');
+    }    
+}

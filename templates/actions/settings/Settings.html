@@ -1,0 +1,36 @@
+<h1>Настройки</h1>
+<div class="fields form">
+    <form action="?plugin=csvimport&module=settings&action=save" method="post"  id="plugins-settings-form">
+        <div class="field" style="">
+            <div class="name">
+                Конфигурации
+            </div>
+            <div class="value" style="margin-left: 100px!important;">
+                {if $config}
+                <table class="zebra">
+                  {foreach $config as $c}
+                  <tr data-id="{$c.id}">
+                     <td>{$c.name}</td>
+                     <td><i style="cursor: pointer;" class="icon16 delete"></i></td>
+                  </tr>
+                  {/foreach}
+               </table>
+                {/if}
+            </div>
+        </div>
+    </form>
+</div>
+<script>
+$(document).ready(function(){
+    $('i.delete').live('click', function(){
+        var tr = $(this).closest('tr');
+        var id = tr.data('id');
+        $.post('?plugin=csvimport&module=settings&action=save', { id:id}, function(response){
+            if(response.status == 'ok')
+            {
+                tr.remove();
+            }
+        },'json');
+    });
+})
+</script>

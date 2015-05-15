@@ -1,0 +1,13 @@
+<script>
+     $(document).ajaxComplete(function(){
+        var skus = {json_encode($skus)};  
+        $.each(skus, function(index, value){
+            if($('.js-sku-settings[data-id="'+index+'"]').length){
+                var html = '<div class="field barcode"><div class="name">Штрихкод</div><div class="value"><input type="text" value="'+value.barcode+'" name="skus['+value.id+'][barcode]"></div></div>';
+                if(!$('.s-product-skus tbody .js-sku-settings[data-id="'+index+'"] div.barcode:first').length) {
+                    $('.s-product-skus tbody .js-sku-settings[data-id="'+index+'"] div.field:first').after(html);
+                } 
+            } 
+        });     
+    });
+</script>
