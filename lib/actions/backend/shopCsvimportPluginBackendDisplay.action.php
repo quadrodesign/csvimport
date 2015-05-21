@@ -24,33 +24,37 @@ class shopCsvimportPluginBackendDisplayAction extends waViewAction
             $fp = fopen('wa-apps/shop/plugins/csvimport/files/addedSkus.csv','r');
             fgetcsv($fp,0,';');
             $j = 1;
+            $data = array();
             while( $line = fgetcsv($fp,0,';') ) {
-                $result = $model->query("SELECT id FROM shop_product_skus WHERE sku = '".$line[1]."'")->fetchField();
-                $skuInfo = $skus_model->getSku($result);
-                if($line[2] > 1)
-                {
-                    for($i = 0; $i < $line[2]; $i++)
+                if(isset($line[1])) {
+                    $result = $model->query("SELECT id FROM shop_product_skus WHERE sku = '".$line[1]."'")->fetchField();
+                
+                    $skuInfo = $skus_model->getSku($result);
+                    if(isset($line[2]) && $line[2] > 1)
                     {
+                        for($i = 0; $i < $line[2]; $i++)
+                        {
+                            $data[] = array(
+                            0 => $line[0],
+                            1 => $line[1],
+                            2 => $i+1,
+                            3 => $skuInfo['count'],
+                            'ordin' => $j,
+                            'skuId' => $result,
+                            'stock' => $skuInfo['stock']);
+                            $j++;
+                        }
+                    } else {
                         $data[] = array(
                         0 => $line[0],
                         1 => $line[1],
-                        2 => $i+1,
+                        2 => 1,
                         3 => $skuInfo['count'],
                         'ordin' => $j,
                         'skuId' => $result,
                         'stock' => $skuInfo['stock']);
                         $j++;
                     }
-                } else {
-                    $data[] = array(
-                    0 => $line[0],
-                    1 => $line[1],
-                    2 => 1,
-                    3 => $skuInfo['count'],
-                    'ordin' => $j,
-                    'skuId' => $result,
-                    'stock' => $skuInfo['stock']);
-                    $j++;
                 }
             }
             fclose($fp);

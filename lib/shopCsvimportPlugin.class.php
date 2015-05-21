@@ -44,7 +44,7 @@ class shopCsvimportPlugin extends shopPlugin
             $res[$sku['id']]['count'] = $sku['count'];
         }
         
-        if($features && is_array($features)) {
+        if(isset($features) && is_array($features)) {
             $countFeat = count($features);
             foreach($res as $key => $r)
             {

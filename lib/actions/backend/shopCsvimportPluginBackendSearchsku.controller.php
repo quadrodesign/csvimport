@@ -21,13 +21,15 @@ class shopCsvimportPluginBackendSearchskuController extends waJsonController {
                 $file_handle = fopen('wa-apps/shop/plugins/csvimport/files/addedSkus.csv', 'r');
                 $response = false;
                 while (!feof($file_handle) ) {
-                    $line_of_text = fgetcsv($file_handle, 0,';');    
-                    if ($p['sku']['sku'] == $line_of_text[1]) {
-                        $line_of_text[2] = $line_of_text[2] + 1;
-                        $datas[] = $line_of_text;
-                        $response = true;
-                    } else {
-                        $datas[] = $line_of_text;
+                    $line_of_text = fgetcsv($file_handle, 0,';');  
+                    if(isset($line_of_text[1])) {  
+                        if ( $p['sku']['sku'] == $line_of_text[1]) {
+                            $line_of_text[2] = $line_of_text[2] + 1;
+                            $datas[] = $line_of_text;
+                            $response = true;
+                        } else {
+                            $datas[] = $line_of_text;
+                        }
                     }
                 }
                 if(!$response) {
@@ -42,7 +44,7 @@ class shopCsvimportPluginBackendSearchskuController extends waJsonController {
                 $upProd = fopen('wa-apps/shop/plugins/csvimport/files/addedSkus.csv','w');
                 foreach($datas as $d)
                 {
-                    fputcsv($upProd, $d, ';');
+                    fputcsv($upProd, (array)$d, ';');
                 }
                 fclose($upProd);
                 

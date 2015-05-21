@@ -48,17 +48,17 @@ class shopCsvimportPluginBackendVerifidataController extends waLongActionControl
         
         foreach($this->data['info'] as $key => $header)
         {
-            $pos = strpos($header, 'features');
+            $pos = strpos((string)$header, 'features');
             if($pos !== false)
             {
-                $ident = explode(':',$header);
+                $ident = explode(':',(string)$header);
                 if ($ident[1] != '')
                 {
                     $this->data['features'][$header]['key'] = $key;
                     $feats = $this->feature_model->getByCode($ident[1]);
                     
                     $result = explode('.',$feats['type']);
-                    $and = $result[1] ? "AND type='".$result[1]."' " : "" ;
+                    $and = isset($result[1]) ? "AND type='".$result[1]."' " : "" ;
                     $values = $this->model->query("SELECT value FROM shop_feature_values_".$result[0]." WHERE feature_id = '".$feats['id']."' ".$and)->fetchAll();
                     $val = array();
                     if($values)
@@ -155,7 +155,7 @@ class shopCsvimportPluginBackendVerifidataController extends waLongActionControl
     {
         foreach($str as $key => $s)
         {
-            $string[$key] = iconv("UTF-8", "Windows-1251", $s);
+            $string[$key] = iconv("UTF-8", "Windows-1251//IGNORE", $s);
         }
         return $string;
     }
@@ -170,14 +170,14 @@ class shopCsvimportPluginBackendVerifidataController extends waLongActionControl
     {
         $identifierId = $this->data['info']['id'];
         $explodeData = explode(':', $this->data['info'][$identifierId]);
-        if($explodeData[1])
+        if(isset($explodeData[1]))
         {
             if($explodeData[0] == 'features')
             {
                 $feats = $this->feature_model->getByCode($explodeData[1]);
                     
                 $result = explode('.',$feats['type']);
-                $and = $result[1] ? "AND type='".$result[1]."' " : "" ;
+                $and = isset($result[1]) ? "AND type='".$result[1]."' " : "" ;
                 $values = $this->model->query("SELECT * FROM shop_feature_values_".$result[0]." WHERE feature_id = '".$feats['id']."' ".$and)->fetchAll();
                 $val = array();
                 if($values)
@@ -207,7 +207,7 @@ class shopCsvimportPluginBackendVerifidataController extends waLongActionControl
         }
         else
         {
-            return $this->model->query("SELECT id FROM shop_product WHERE ".$explodeData[0]." = '".$csvInfo[$identifierId]."'")->fetchField();
+            return $this->model->query("SELECT id FROM shop_product WHERE ".$explodeData[0]." = '".mysql_escape_string($csvInfo[$identifierId])."'")->fetchField();
         }
     }
     
@@ -220,7 +220,6 @@ class shopCsvimportPluginBackendVerifidataController extends waLongActionControl
         $indicator = 0;
         while($line = fgetcsv($fp,0,';'))
         {
-            
             if($indicator >= $this->data['offset'])
             {
                 if(($this->data['offset'] - $start) <= $limit){
@@ -234,11 +233,12 @@ class shopCsvimportPluginBackendVerifidataController extends waLongActionControl
                         fclose($upProd);
                                               
                         $skuName = $csvInfo[$this->data['info']['skuId'][1]];
-                        
-                        foreach($this->data['info']['separator'] as $key => $sku)
-                        {
-                            $skuName .= $sku;
-                            $skuName .= $csvInfo[$this->data['info']['skuId'][$key]];
+                        if(isset($this->data['info']['separator'])) {
+                            foreach($this->data['info']['separator'] as $key => $sku)
+                            {
+                                $skuName .= $sku;
+                                $skuName .= $csvInfo[$this->data['info']['skuId'][$key]];
+                            }
                         }
                         
                         $skuId = $this->model->query("SELECT id FROM shop_product_skus WHERE sku = '".$skuName."' AND product_id = '".$productId."'")->fetchField();
@@ -302,32 +302,33 @@ class shopCsvimportPluginBackendVerifidataController extends waLongActionControl
                         fclose($newProd);
                     }
                     
-                    foreach($this->data['features'] as $key => $feature)
-                    {
-                        if(!empty($csvInfo[$feature['key']]))
+                    if(isset($this->data['features'])) {
+                        foreach($this->data['features'] as $key => $feature)
                         {
-                            if(!in_array($csvInfo[$feature['key']], $feature['values']))
+                            if(!empty($csvInfo[$feature['key']]))
                             {
-                                $this->data['features'][$key]['count']++;
-                                //$this->data['features'][$key]['info'] = $this->data['features'];
-                                $ident = explode(':',$key);
-                                $feat = fopen($this->data['info']['path'].'new'.ucfirst($ident[1]).'.csv','a');
-                                fputcsv($feat, $this->reconvert($csvInfo), ';');
-                                fclose($feat);
+                                if(!in_array($csvInfo[$feature['key']], $feature['values']))
+                                {
+                                    $this->data['features'][$key]['count']++;
+                                    //$this->data['features'][$key]['info'] = $this->data['features'];
+                                    $ident = explode(':',$key);
+                                    $feat = fopen($this->data['info']['path'].'new'.ucfirst($ident[1]).'.csv','a');
+                                    fputcsv($feat, $this->reconvert($csvInfo), ';');
+                                    fclose($feat);
+                                }
                             }
                         }
                     }
-                    
-                } else {
-                    break;}
+                } else { break;}
                 $this->data['offset'] += 1;
             }
             $indicator++;
+            if($this->data['offset'] >= $this->data['total_count']) {
+                break;
+            }
         }
         fclose($fp);
         
-        if($this->data['offset'] >= $this->data['total_count']) 
-        break;
         sleep(1);
     }
 
@@ -359,11 +360,11 @@ class shopCsvimportPluginBackendVerifidataController extends waLongActionControl
     
     protected function report()
     {
-        $this->data['info']['config']['checkbox'] = (array)$this->data['info']['config']['checkbox'];
-        $newProd = $this->data['info']['config']['checkbox']['newProd'] == 'on' ? 'checked="checked"' : '';
-        $updateProd = $this->data['info']['config']['checkbox']['updateProd'] == 'on' ? 'checked="checked"' : '';
-        $newSkus = $this->data['info']['config']['checkbox']['newSkus'] == 'on' ? 'checked="checked"' : '';
-        $updateSkus = $this->data['info']['config']['checkbox']['updateSkus'] == 'on' ? 'checked="checked"' : '';
+        $this->data['info']['config']['checkbox'] = isset($this->data['info']['config']['checkbox']) ? (array)$this->data['info']['config']['checkbox'] : array() ;
+        $newProd = isset($this->data['info']['config']['checkbox']['newProd']) ? 'checked="checked"' : '';
+        $updateProd = isset($this->data['info']['config']['checkbox']['updateProd']) ? 'checked="checked"' : '';
+        $newSkus = isset($this->data['info']['config']['checkbox']['newSkus']) ? 'checked="checked"' : '';
+        $updateSkus = isset($this->data['info']['config']['checkbox']['updateSkus']) ? 'checked="checked"' : '';
         
         $report = '<div class="field reportData">';
         $report .= '<div class="value">';
@@ -380,15 +381,17 @@ class shopCsvimportPluginBackendVerifidataController extends waLongActionControl
             $report .= '<li><i class="icon16 yes"></i>'.$this->data['ostat'].' артикула имеют негативный остаток <a href="http://'.waRequest::server('HTTP_HOST').'/'.$this->data['info']['path'].'ostat.csv" download>CSV</a><br></li>';
         }
         
-        foreach($this->data['features'] as $f_id => $f)
-        {
-            if($f['count'] > 0)
+        if(isset($this->data['features'])) {
+            foreach($this->data['features'] as $f_id => $f)
             {
-                $fid = explode(':', $f_id);
-                $this->data['info']['config']['checkbox']['features'] = (array)$this->data['info']['config']['checkbox']['features'];
-                $checked = $this->data['info']['config']['checkbox']['features'][$f['code']] == 'on' ? 'checked="checked"' : '';
-                $pole = $f['count'] > 4 ? 'полей' : 'поля' ;
-                $report .= '<li><input type="checkbox" '.$checked.' name="checkbox[features]['.$f['code'].']"/><i class="icon16 yes"></i>'.$f['count'].' '.$pole.' с новой характеристикой типа "'.$f['name'].'" <a href="http://'.waRequest::server('HTTP_HOST').'/'.$this->data['info']['path'].'new'.ucfirst($fid[1]).'.csv" download>CSV</a><br></li>';
+                if($f['count'] > 0)
+                {
+                    $fid = explode(':', $f_id);
+                    $this->data['info']['config']['checkbox']['features'] = isset($this->data['info']['config']['checkbox']['features']) ? (array)$this->data['info']['config']['checkbox']['features'] : array();
+                    $checked = isset($this->data['info']['config']['checkbox']['features'][$f['code']]) ? 'checked="checked"' : '';
+                    $pole = $f['count'] > 4 ? 'полей' : 'поля' ;
+                    $report .= '<li><input type="checkbox" '.$checked.' name="checkbox[features]['.$f['code'].']"/><i class="icon16 yes"></i>'.$f['count'].' '.$pole.' с новой характеристикой типа "'.$f['name'].'" <a href="http://'.waRequest::server('HTTP_HOST').'/'.$this->data['info']['path'].'new'.ucfirst($fid[1]).'.csv" download>CSV</a><br></li>';
+                }
             }
         }
         

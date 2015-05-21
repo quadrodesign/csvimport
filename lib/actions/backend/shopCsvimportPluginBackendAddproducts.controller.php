@@ -50,7 +50,7 @@ class shopCsvimportPluginBackendAddproductsController extends waLongActionContro
         
         foreach($this->data['info'] as $key => $header)
         {
-            $data = explode(':', $header);
+            $data = explode(':', (string)$header);
             if(is_numeric($key))
             {
                 if($data[0] == 'skus')
@@ -131,14 +131,14 @@ class shopCsvimportPluginBackendAddproductsController extends waLongActionContro
     {
         $identifierId = $this->data['info']['id'];
         $explodeData = explode(':', $this->data['info'][$identifierId]);
-        if($explodeData[1])
+        if(isset($explodeData[1]))
         {
             if($explodeData[0] == 'features')
             {
                 $feats = $this->feature_model->getByCode($explodeData[1]);
                     
                 $result = explode('.',$feats['type']);
-                $and = $result[1] ? "AND type='".$result[1]."' " : "" ;
+                $and = isset($result[1]) ? "AND type='".$result[1]."' " : "" ;
                 $values = $this->model->query("SELECT * FROM shop_feature_values_".$result[0]." WHERE feature_id = '".$feats['id']."' ".$and)->fetchAll();
                 $val = array();
                 if($values)
@@ -189,9 +189,12 @@ class shopCsvimportPluginBackendAddproductsController extends waLongActionContro
                     $productId = $this->getProductId($csvInfo);
                     
                     $data = array();
-                    foreach($this->data['products'] as $key => $value)
-                    {
-                        $data[$key] = $csvInfo[$value];
+                    
+                    if(isset($this->data['products'])) {
+                        foreach($this->data['products'] as $key => $value)
+                        {
+                            $data[$key] = $csvInfo[$value];
+                        }
                     }
                                        
                         $data['category_id'] = 17;
@@ -208,12 +211,13 @@ class shopCsvimportPluginBackendAddproductsController extends waLongActionContro
                             
                             $skuName = $csvInfo[$this->data['info']['skuId'][1]];
                         
-                            foreach($this->data['info']['separator'] as $key => $sku)
-                            {
-                                $skuName .= $sku;
-                                $skuName .= $csvInfo[$this->data['info']['skuId'][$key]];
+                            if(isset($this->data['info']['separator'])) {
+                                foreach($this->data['info']['separator'] as $key => $sku)
+                                {
+                                    $skuName .= $sku;
+                                    $skuName .= $csvInfo[$this->data['info']['skuId'][$key]];
+                                }
                             }
-                            
                             
                             if(is_array($this->data['skus']))
                             {
@@ -227,7 +231,7 @@ class shopCsvimportPluginBackendAddproductsController extends waLongActionContro
                                 {
                                     if($key == 'stocks'){
                                         if($this->data['info']['regim'] == 1 || $this->data['info']['regim'] == 4){
-                                            $skuData['count'] = $csvInfo[$value[0]] ? $csvInfo[$value[0]] : '';
+                                            $skuData['count'] =  isset($value[0]) && isset($csvInfo[$value[0]]) ? $csvInfo[$value[0]] : '';
                                             unset($this->data['skus']['stocks'][0]);
                                             if(count($this->data['skus']['stocks']))
                                             {
@@ -286,8 +290,10 @@ class shopCsvimportPluginBackendAddproductsController extends waLongActionContro
                                     }  
                                 }
                                 $skuData['sku'] = $skuName;
-                                
-                                
+                                if(!isset($skuData['price'])) {
+                                    $skuInfo = $skus_model->getSku($skuId);
+                                    $skuData['price'] = $skuInfo['price'];
+                                }
                                 
                                 if($skuId && $this->data['info']['checkbox']['updateSkus'])
                                 {
@@ -310,7 +316,7 @@ class shopCsvimportPluginBackendAddproductsController extends waLongActionContro
                                 } 
                             }
                             
-                            if($this->data['images'])
+                            if(isset($this->data['images']))
                             {
                                 foreach($this->data['images'] as $value)
                                 {
@@ -319,7 +325,7 @@ class shopCsvimportPluginBackendAddproductsController extends waLongActionContro
                                 }
                             }
                             
-                            if($this->data['features'])
+                            if(isset($this->data['features']))
                             {
                                 $dataFeat = array();
                                 $features_model =  new shopFeatureModel();
@@ -328,7 +334,7 @@ class shopCsvimportPluginBackendAddproductsController extends waLongActionContro
                                     $feats = $features_model->getByCode($features['code']);
                     
                                     $result = explode('.',$feats['type']);
-                                    $and = $result[1] ? "AND type='".$result[1]."' " : "" ;
+                                    $and = isset($result[1]) ? "AND type='".$result[1]."' " : "" ;
                                     $values = $this->model->query("SELECT value FROM shop_feature_values_".$result[0]." WHERE feature_id = '".$feats['id']."' ".$and)->fetchAll();
                                     $val = array();
                                     if($values){
@@ -469,16 +475,16 @@ class shopCsvimportPluginBackendAddproductsController extends waLongActionContro
                             }
                         }
                     } 
-                } else {
-                    break;}
+                } else { break;}
                 $this->data['offset'] += 1;
             }
             $indicator++;
+            if($this->data['offset'] >= $this->data['total_count']) {
+                break;
+            } 
         }
         fclose($fp);
         
-        if($this->data['offset'] >= $this->data['total_count']) 
-        break;
         sleep(1);
     }
 
