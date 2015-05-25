@@ -120,10 +120,10 @@ class shopCsvimportPluginBackendVerifidataController extends waLongActionControl
         fputcsv($newSkus, $this->reconvert($this->data['header']), ';');
         fclose($newSkus);
         
-        $this->data['newProduct'] = 0; 
+        $this->data['newProduct'] = array(); 
         $this->data['ostat'] = 0;
         $this->data['newSkus'] = 0; 
-        $this->data['updateProduct'] = 0; 
+        $this->data['updateProduct'] = array(); 
         $this->data['updateSkus'] = 0;
         $this->data['offset'] = 0;
         $this->data['ready'] = true;
@@ -227,7 +227,7 @@ class shopCsvimportPluginBackendVerifidataController extends waLongActionControl
                     $productId = $this->getProductId($csvInfo);
                     
                     if($productId){
-                        $this->data['updateProduct']++;
+                        $this->data['updateProduct'][$productId] = 1;
                         $upProd = fopen($this->data['info']['path'].'updateProd.csv','a');
                         fputcsv($upProd, $this->reconvert($csvInfo), ';');
                         fclose($upProd);
@@ -290,7 +290,7 @@ class shopCsvimportPluginBackendVerifidataController extends waLongActionControl
                     }
                     else
                     {
-                        $this->data['newProduct']++;
+                        $this->data['newProduct'][md5($csvInfo[$this->data['info']['id']])] = 1;
                         $this->data['newSkus']++;
                         
                         $newSkus = fopen($this->data['info']['path'].'newSkus.csv','a');
@@ -371,8 +371,8 @@ class shopCsvimportPluginBackendVerifidataController extends waLongActionControl
         $report .= '<div class="s-csv-importexport-stats">';
         $report .= '<p>В CSV-файле обнаружена и готова к импорту следующая информация:</p>';
         $report .= '<ul>';
-        $report .= '<li><input type="checkbox" '.$newProd.' name="checkbox[newProd]"/><i class="icon16 yes"></i>'.$this->data['newProduct'].' новых товара <a href="http://'.waRequest::server('HTTP_HOST').'/'.$this->data['info']['path'].'newProd.csv" download>CSV</a><br></li>';
-        $report .= '<li><input type="checkbox" '.$updateProd.' name="checkbox[updateProd]"/><i class="icon16 yes"></i>'.$this->data['updateProduct'].' товара будут обновлены <a href="http://'.waRequest::server('HTTP_HOST').'/'.$this->data['info']['path'].'updateProd.csv" download>CSV</a><br></li>';
+        $report .= '<li><input type="checkbox" '.$newProd.' name="checkbox[newProd]"/><i class="icon16 yes"></i>'.count($this->data['newProduct']).' новых товара <a href="http://'.waRequest::server('HTTP_HOST').'/'.$this->data['info']['path'].'newProd.csv" download>CSV</a><br></li>';
+        $report .= '<li><input type="checkbox" '.$updateProd.' name="checkbox[updateProd]"/><i class="icon16 yes"></i>'.count($this->data['updateProduct']).' товара будут обновлены <a href="http://'.waRequest::server('HTTP_HOST').'/'.$this->data['info']['path'].'updateProd.csv" download>CSV</a><br></li>';
         $report .= '<li><input type="checkbox" '.$newSkus.' name="checkbox[newSkus]"/><i class="icon16 yes"></i>'.$this->data['newSkus'].' новых артикула <a href="http://'.waRequest::server('HTTP_HOST').'/'.$this->data['info']['path'].'newSkus.csv" download>CSV</a><br></li>';
         $report .= '<li><input type="checkbox" '.$updateSkus.' name="checkbox[updateSkus]"/><i class="icon16 yes"></i>'.$this->data['updateSkus'].' артикула будут обновлены <a href="http://'.waRequest::server('HTTP_HOST').'/'.$this->data['info']['path'].'updateSkus.csv" download>CSV</a><br></li>';
         
