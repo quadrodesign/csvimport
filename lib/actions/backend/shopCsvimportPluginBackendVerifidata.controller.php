@@ -40,20 +40,16 @@ class shopCsvimportPluginBackendVerifidataController extends waLongActionControl
         $this->data['header'] = $this->convert(fgetcsv($fp,0,';'));
         $this->data['total_count'] = 0; 
         
-        while( $line = fgetcsv($fp,0,';') )
-          {
+        while( $line = fgetcsv($fp,0,';') ) {
             $this->data['total_count']++;
-          }
+        }
         fclose($fp);
         
-        foreach($this->data['info'] as $key => $header)
-        {
+        foreach($this->data['info'] as $key => $header) {
             $pos = strpos((string)$header, 'features');
-            if($pos !== false)
-            {
+            if($pos !== false) {
                 $ident = explode(':',(string)$header);
-                if ($ident[1] != '')
-                {
+                if ($ident[1] != '') {
                     $this->data['features'][$header]['key'] = $key;
                     $feats = $this->feature_model->getByCode($ident[1]);
                     
@@ -61,10 +57,8 @@ class shopCsvimportPluginBackendVerifidataController extends waLongActionControl
                     $and = isset($result[1]) ? "AND type='".$result[1]."' " : "" ;
                     $values = $this->model->query("SELECT value FROM shop_feature_values_".$result[0]." WHERE feature_id = '".$feats['id']."' ".$and)->fetchAll();
                     $val = array();
-                    if($values)
-                    {
-                        foreach($values as $v)
-                        {
+                    if($values) {
+                        foreach($values as $v) {
                             $val[] = $v['value'];
                         }
                     }
@@ -81,15 +75,11 @@ class shopCsvimportPluginBackendVerifidataController extends waLongActionControl
                 
             }
             
-            if($this->data['info']['regim'] == 3)
-            {
+            if($this->data['info']['regim'] == 3) {
                 $data = explode(':', $header);
-                if(is_numeric($key))
-                {
-                    if($data[0] == 'skus')
-                    {
-                        if($data[2] == 'stock')
-                        {
+                if(is_numeric($key)) {
+                    if($data[0] == 'skus') {
+                        if($data[2] == 'stock') {
                             $this->data['skus']['stocks'][$data[3]] = $key;
                         }
                     }              
@@ -120,11 +110,21 @@ class shopCsvimportPluginBackendVerifidataController extends waLongActionControl
         fputcsv($newSkus, $this->reconvert($this->data['header']), ';');
         fclose($newSkus);
         
+        $notFeat = fopen($this->data['info']['path'].'notFeat.csv','w');
+        fputcsv($notFeat, $this->reconvert($this->data['header']), ';');
+        fclose($notFeat);
+        
+        $notFoundFeat = fopen($this->data['info']['path'].'notFoundFeat.csv','w');
+        fputcsv($notFoundFeat, $this->reconvert($this->data['header']), ';');
+        fclose($notFoundFeat);
+        
         $this->data['newProduct'] = array(); 
         $this->data['ostat'] = 0;
         $this->data['newSkus'] = 0; 
         $this->data['updateProduct'] = array(); 
         $this->data['updateSkus'] = 0;
+        $this->data['notFeat'] = 0;
+        $this->data['notFoundFeat'] = 0;
         $this->data['offset'] = 0;
         $this->data['ready'] = true;
         $this->data['timestamp'] = time();
@@ -140,8 +140,7 @@ class shopCsvimportPluginBackendVerifidataController extends waLongActionControl
     
     protected function convert($str) 
     {
-        foreach($str as $key => $s)
-        {
+        foreach($str as $key => $s) {
             if($this->data['info']['charset'] == 'Windows-1251') {
                 $string[$key] = iconv("Windows-1251", "UTF-8", $s);
             } else {
@@ -153,8 +152,7 @@ class shopCsvimportPluginBackendVerifidataController extends waLongActionControl
     
     protected function reconvert($str) 
     {
-        foreach($str as $key => $s)
-        {
+        foreach($str as $key => $s) {
             $string[$key] = iconv("UTF-8", "Windows-1251//IGNORE", $s);
         }
         return $string;
@@ -170,43 +168,31 @@ class shopCsvimportPluginBackendVerifidataController extends waLongActionControl
     {
         $identifierId = $this->data['info']['id'];
         $explodeData = explode(':', $this->data['info'][$identifierId]);
-        if(isset($explodeData[1]))
-        {
-            if($explodeData[0] == 'features')
-            {
+        if(isset($explodeData[1])) {
+            if($explodeData[0] == 'features') {
                 $feats = $this->feature_model->getByCode($explodeData[1]);
                     
                 $result = explode('.',$feats['type']);
                 $and = isset($result[1]) ? "AND type='".$result[1]."' " : "" ;
                 $values = $this->model->query("SELECT * FROM shop_feature_values_".$result[0]." WHERE feature_id = '".$feats['id']."' ".$and)->fetchAll();
                 $val = array();
-                if($values)
-                {
-                    foreach($values as $v)
-                    {
-                        if(!empty($csvInfo[$identifierId]))
-                        {
-                            if($csvInfo[$identifierId] == $v['value'])
-                            {
+                if($values) {
+                    foreach($values as $v) {
+                        if(!empty($csvInfo[$identifierId])) {
+                            if($csvInfo[$identifierId] == $v['value']) {
                                 return $this->model->query("SELECT product_id FROM shop_product_features WHERE feature_id='".$v['feature_id']."' AND feature_value_id='".$v['id']."'")->fetchField();
                             }
                         }
                     }
                 }
                 return false;
-            } 
-            elseif($explodeData[0] == 'skus')
-            {
+            } elseif($explodeData[0] == 'skus') {
                 $where = $explodeData[2].'='.$csvInfo[$identifierId];
                 return $this->model->query("SELECT product_id FROM shop_product_skus WHERE ".$where)->fetchField();
-            }
-            else
-            {
+            } else {
                 return false;
             }
-        }
-        else
-        {
+        } else {
             return $this->model->query("SELECT id FROM shop_product WHERE ".$explodeData[0]." = '".mysql_escape_string($csvInfo[$identifierId])."'")->fetchField();
         }
     }
@@ -218,10 +204,8 @@ class shopCsvimportPluginBackendVerifidataController extends waLongActionControl
         $fp = fopen($this->data['info']['path'].$this->data['info']['name_file'],'r');
         $this->data['header'] = $this->convert(fgetcsv($fp,0,';'));
         $indicator = 0;
-        while($line = fgetcsv($fp,0,';'))
-        {
-            if($indicator >= $this->data['offset'])
-            {
+        while($line = fgetcsv($fp,0,';')) {
+            if($indicator >= $this->data['offset']) {
                 if(($this->data['offset'] - $start) <= $limit){
                     $csvInfo = $this->convert($line);
                     $productId = $this->getProductId($csvInfo);
@@ -229,31 +213,30 @@ class shopCsvimportPluginBackendVerifidataController extends waLongActionControl
                     if($productId){
                         $this->data['updateProduct'][$productId] = 1;
                         $upProd = fopen($this->data['info']['path'].'updateProd.csv','a');
-                        fputcsv($upProd, $this->reconvert($csvInfo), ';');
+                        if($this->data['info']['charset'] == 'UTF-8') {
+                            fputcsv($upProd, $csvInfo, ';');
+                        } else {
+                            fputcsv($upProd, $this->reconvert($csvInfo), ';');
+                        }
                         fclose($upProd);
                                               
                         $skuName = $csvInfo[$this->data['info']['skuId'][1]];
                         if(isset($this->data['info']['separator'])) {
-                            foreach($this->data['info']['separator'] as $key => $sku)
-                            {
+                            foreach($this->data['info']['separator'] as $key => $sku) {
                                 $skuName .= $sku;
                                 $skuName .= $csvInfo[$this->data['info']['skuId'][$key]];
                             }
                         }
                         
                         $skuId = $this->model->query("SELECT id FROM shop_product_skus WHERE sku = '".$skuName."' AND product_id = '".$productId."'")->fetchField();
-                        if($skuId)
-                        {
-                            if($this->data['info']['regim'] == 3)
-                            {
-                                if(is_array($this->data['skus']['stocks']))
-                                {
+                        if($skuId) {
+                            if($this->data['info']['regim'] == 3) {
+                                if(is_array($this->data['skus']['stocks'])) {
                                     $skus_model = new shopProductSkusModel();
                                     $skuInfo = $skus_model->getSku($skuId);
                                     unset($this->data['skus']['stocks'][0]);
                                     $i = false;
-                                    foreach($this->data['skus']['stocks'] as $stock_id => $stock)
-                                    {
+                                    foreach($this->data['skus']['stocks'] as $stock_id => $stock) {
                                         if($skuInfo){
                                             $count = $skuInfo['stock'][$stock_id] ? $skuInfo['stock'][$stock_id] : 0;}
                                         if($csvInfo[$stock]){
@@ -269,7 +252,11 @@ class shopCsvimportPluginBackendVerifidataController extends waLongActionControl
                                     if($i) {
                                         $this->data['ostat']++;
                                         $ostat = fopen($this->data['info']['path'].'ostat.csv','a');
-                                        fputcsv($ostat, $this->reconvert($csvInfo), ';');
+                                        if($this->data['info']['charset'] == 'UTF-8') {
+                                            fputcsv($ostat, $csvInfo, ';');
+                                        } else {
+                                            fputcsv($ostat, $this->reconvert($csvInfo), ';');
+                                        }
                                         fclose($ostat);
                                     }
                                 }
@@ -277,43 +264,81 @@ class shopCsvimportPluginBackendVerifidataController extends waLongActionControl
                                 
                             $this->data['updateSkus']++;
                             $upSkus = fopen($this->data['info']['path'].'updateSkus.csv','a');
-                            fputcsv($upSkus, $this->reconvert($csvInfo), ';');
+                            if($this->data['info']['charset'] == 'UTF-8') {
+                                fputcsv($upSkus, $csvInfo, ';');
+                            } else {
+                                fputcsv($upSkus, $this->reconvert($csvInfo), ';');
+                            }
                             fclose($upSkus);
-                        }
-                        else
-                        {
+                        } else {
                             $this->data['newSkus']++;
                             $newSkus = fopen($this->data['info']['path'].'newSkus.csv','a');
-                            fputcsv($newSkus, $this->reconvert($csvInfo), ';');
+                            if($this->data['info']['charset'] == 'UTF-8') {
+                            fputcsv($newSkus, $csvInfo, ';');
+                            } else {
+                                fputcsv($newSkus, $this->reconvert($csvInfo), ';');
+                            }
                             fclose($newSkus);
                         }
-                    }
-                    else
-                    {
+                    } else {
                         $this->data['newProduct'][md5($csvInfo[$this->data['info']['id']])] = 1;
                         $this->data['newSkus']++;
                         
                         $newSkus = fopen($this->data['info']['path'].'newSkus.csv','a');
-                        fputcsv($newSkus, $this->reconvert($csvInfo), ';');
+                        if($this->data['info']['charset'] == 'UTF-8') {
+                            fputcsv($newSkus, $csvInfo, ';');
+                        } else {
+                            fputcsv($newSkus, $this->reconvert($csvInfo), ';');
+                        }
                         fclose($newSkus);
                         
                         $newProd = fopen($this->data['info']['path'].'newProd.csv','a');
-                        fputcsv($newProd, $this->reconvert($csvInfo), ';');
+                        if($this->data['info']['charset'] == 'UTF-8') {
+                            fputcsv($newProd, $csvInfo, ';');
+                        } else {
+                            fputcsv($newProd, $this->reconvert($csvInfo), ';');
+                        }
                         fclose($newProd);
                     }
                     
                     if(isset($this->data['features'])) {
-                        foreach($this->data['features'] as $key => $feature)
-                        {
-                            if(!empty($csvInfo[$feature['key']]))
-                            {
-                                if(!in_array($csvInfo[$feature['key']], $feature['values']))
-                                {
+                        foreach($this->data['features'] as $key => $feature) {
+                            if(!empty($csvInfo[$feature['key']])) {
+                                if(is_numeric($this->data['info']['id_razmer'])) {
+                                    if($feature['key'] == $this->data['info']['id_razmer'] && $productId) {
+                                        if($size = shopTablesizePlugin::getSiteSize($productId,$csvInfo[$feature['key']])) {
+                                            $csvInfo[$feature['key']] = $size;
+                                        } else {
+                                            $this->data['notFeat']++;
+                                            $notFeat = fopen($this->data['info']['path'].'notFeat.csv','a');
+                                            if($this->data['info']['charset'] == 'UTF-8') {
+                                                fputcsv($notFeat, $csvInfo, ';');
+                                            } else {
+                                                fputcsv($notFeat, $this->reconvert($csvInfo), ';');
+                                            }
+                                            fclose($notFeat);
+                                        }
+                                    } elseif($feature['key'] == $this->data['info']['id_razmer'] && !$productId) {
+                                        $this->data['notFoundFeat']++;
+                                        $notFoundFeat = fopen($this->data['info']['path'].'notFoundFeat.csv','a');
+                                        if($this->data['info']['charset'] == 'UTF-8') {
+                                            fputcsv($notFoundFeat, $csvInfo, ';');
+                                        } else {
+                                            fputcsv($notFoundFeat, $this->reconvert($csvInfo), ';');
+                                        }
+                                        fclose($notFoundFeat);
+                                    }
+                                }
+                                if(!in_array($csvInfo[$feature['key']], $feature['values'])) {
                                     $this->data['features'][$key]['count']++;
                                     //$this->data['features'][$key]['info'] = $this->data['features'];
                                     $ident = explode(':',$key);
                                     $feat = fopen($this->data['info']['path'].'new'.ucfirst($ident[1]).'.csv','a');
-                                    fputcsv($feat, $this->reconvert($csvInfo), ';');
+                                    if($this->data['info']['charset'] == 'UTF-8') {
+                                        fputcsv($feat, $csvInfo, ';');
+                                    } else {
+                                        fputcsv($feat, $this->reconvert($csvInfo), ';');
+                                    }
                                     fclose($feat);
                                 }
                             }
@@ -354,7 +379,6 @@ class shopCsvimportPluginBackendVerifidataController extends waLongActionControl
         if ($this->getRequest()->post('cleanup')) {
             $response['report'] = $this->report();
         }
-        
         echo json_encode($response);
     }
     
@@ -395,7 +419,15 @@ class shopCsvimportPluginBackendVerifidataController extends waLongActionControl
             }
         }
         
-        $report .= '<ul>';
+        if($this->data['notFeat'] > 0) {
+            $report .= '<li><i class="icon16 yes"></i>'.$this->data['notFeat'].' размеров не нашли соответствие в размерной тоблице <a href="http://'.waRequest::server('HTTP_HOST').'/'.$this->data['info']['path'].'notFeat.csv" download>CSV</a><br></li>';
+        }
+        
+        if($this->data['notFoundFeat'] > 0) {
+            $report .= '<li><i class="icon16 yes"></i>'.$this->data['notFoundFeat'].' размеров не нашли соответствие в размерной тоблице(Новые товары)<a href="http://'.waRequest::server('HTTP_HOST').'/'.$this->data['info']['path'].'notFoundFeat.csv" download>CSV</a><br></li>';
+        }
+        
+        $report .= '</ul>';
         $report .= '</div>';
         $report .= '</div>';
         $report .= '</div>';
@@ -405,16 +437,7 @@ class shopCsvimportPluginBackendVerifidataController extends waLongActionControl
         $report .= '<input type="button" id="productImport" class="button green" value="Импортировать">';
         $report .= '</div>';
         $report .= '</div>';        
-        
-//        $interval = 0;
-//        if (!empty($this->data['timestamp'])) {
-//            $interval = time() - $this->data['timestamp'];
-//            $interval = sprintf(_w('%02d hr %02d min %02d sec'), floor($interval / 3600), floor($interval / 60) % 60, $interval % 60);
-//            $report .= ' '.sprintf(_w('(total time: %s)'), $interval);
-//        }
-//        
-//        $report .= '</div>';
-        
+         
         return $report;
     }
     

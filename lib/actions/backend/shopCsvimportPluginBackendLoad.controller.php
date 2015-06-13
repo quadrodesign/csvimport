@@ -25,10 +25,8 @@ class shopCsvimportPluginBackendLoadController extends waJsonController {
             }
             $name = explode('.',$fileName);
             $count = count($name);
-            if($name[$count-1] == 'csv')
-            {
-                if(waRequest::post('name'))
-                {
+            if($name[$count-1] == 'csv') {
+                if(waRequest::post('name')) {
                     $this->response['path'] = "wa-apps/shop/plugins/csvimport/files/";
                     $this->response['name'] = $fileName;
                     $this->response['charset'] = 'UTF-8';
@@ -38,21 +36,17 @@ class shopCsvimportPluginBackendLoadController extends waJsonController {
                     $this->response['header'] = fgetcsv($file,0,';');
                     $i = 0;
                     $limit = 50;
-                    while( $line = fgetcsv($file,0,';') )
-                      {
+                    while( $line = fgetcsv($file,0,';') ) {
                         if($i < $limit) {
                             $info[$i] = $line;  
                         } else {
                             break;
                         }
                         $i++;
-                      } 
+                    } 
                     fclose($file);
-                }
-                elseif($file->uploaded())
-                {
-                    if($file->moveTo('wa-apps/shop/plugins/csvimport/files/', $file->name))
-                    {
+                } elseif($file->uploaded()) {
+                    if($file->moveTo('wa-apps/shop/plugins/csvimport/files/', $file->name)) {
                         $this->response['path'] = "wa-apps/shop/plugins/csvimport/files/";
                         $this->response['name'] = $file->name;
                         $this->response['charset'] = waRequest::post('charset');
@@ -62,8 +56,7 @@ class shopCsvimportPluginBackendLoadController extends waJsonController {
                         $this->response['header'] = array_map( "convert", fgetcsv($file,0,';'));
                         $i = 0;
                         $limit = 50;
-                        while( $line = fgetcsv($file,0,';') )
-                          {
+                        while( $line = fgetcsv($file,0,';') ) {
                             if($i < $limit) {
                                 $info[$i] = array_map( "convert", $line);  
                             } else {
@@ -80,8 +73,7 @@ class shopCsvimportPluginBackendLoadController extends waJsonController {
                 
                 
                 $nameConfig = waRequest::post('config');
-                if($nameConfig != '')
-                {
+                if($nameConfig != '') {
                     $model = new waModel();
                     $config = $model->query("SELECT data FROM shop_csvimport_config WHERE name='".$nameConfig."'")->fetchField();
                     $config = json_decode($config);
@@ -91,10 +83,8 @@ class shopCsvimportPluginBackendLoadController extends waJsonController {
                 
                 $options = array();
                 $opt = (array) self::options();
-                foreach($opt as $key => $option)
-                {
-                    if(is_array($option['group']))
-                    {
+                foreach($opt as $key => $option) {
+                    if(is_array($option['group'])) {
                         switch($option['group']['class']) {
                             case 'product' : $i = 0;break;
                             case 'sku' : $i = 1;break;
@@ -112,9 +102,7 @@ class shopCsvimportPluginBackendLoadController extends waJsonController {
                 );
                 
                 $this->response['options'] = $options;
-            }
-            else
-            {
+            } else {
                 $this->response['message'] = 'fail';
             }            
         } catch (Exception $e) {
@@ -209,7 +197,6 @@ class shopCsvimportPluginBackendLoadController extends waJsonController {
 
         $stock_model = new shopStockModel();
         if ($stocks = $stock_model->getAll('id')) {
-
             foreach ($stocks as $stock_id => $stock) {
                 $fields['sku']['skus:-1:stock:'.$stock_id] = _w('In stock').' @'.$stock['name'];
             }
@@ -235,7 +222,6 @@ class shopCsvimportPluginBackendLoadController extends waJsonController {
         }
 
         return $fields;
-
     }
     
     public function options()
@@ -278,9 +264,7 @@ class shopCsvimportPluginBackendLoadController extends waJsonController {
             $features = $feature_model->getFeatures('name', $header);
         }
         foreach ($features as $id => $feature) {
-            if (
-            ($feature['type'] == shopFeatureModel::TYPE_DIVIDER)
-            ) {
+            if ( ($feature['type'] == shopFeatureModel::TYPE_DIVIDER) ) {
                 unset($features[$id]);
             }
         }

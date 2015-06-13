@@ -48,15 +48,11 @@ function getReady(response)
                         $.each(response.data.options, function(ke, valu){
                             select += '<optgroup label="'+valu.name+'">';
                             $.each(valu.fields, function(k, v){
-                                if(response.data.config)
-                                {
+                                if(response.data.config) {
                                     var selected = v.value == response.data.config[key] ? 'selected="selected"' : '';
-                                }
-                                else
-                                {
+                                } else {
                                     var selected = v.title == value ? 'selected="selected"' : '';
-                                }
-                                
+                                } 
                                 select += '<option '+selected+' value="'+v.value+'">'+v.title+'</option>';    
                             }); 
                             select += '</optgroup>';       
@@ -68,8 +64,7 @@ function getReady(response)
                     table += '</tr></thead></div>';
                 }
                 
-                if(response.data.info)
-                {
+                if(response.data.info) {
                     table += '<tbody>';
                     $.each(response.data.info, function(key, value){
                         table += '<tr>';
@@ -85,8 +80,7 @@ function getReady(response)
                 $('#tableImport').html('<div class="table-wrap" >'+table+'</div>');
                 
                 $('#tableImport .table-wrap select').each(function(){
-                    if($(this).val() == '')
-                    {
+                    if($(this).val() == '') {
                         var id = $(this).closest('td').data('id') ; 
                         $('#tableImport td[data-id='+id+']').addClass('no');
                     }
@@ -96,8 +90,7 @@ function getReady(response)
                     $('#tableImport .head-fixed select').each(function(){
                         var id = $(this).closest('td').data('id');
                         $('#tableImport td[data-id='+id+']').removeClass('no');
-                        if($(this).val() == '')
-                        { 
+                        if($(this).val() == '') { 
                             $('#tableImport td[data-id='+id+']').addClass('no');
                         }
                     });
@@ -127,8 +120,7 @@ function getReady(response)
                     var id = $(this).data('id');
                     $('#identifier [data-id='+id+']').remove();
                     var newId = parseInt(id)+1;
-                    if($('#identifier [data-id='+ newId +']').length)
-                    {
+                    if($('#identifier [data-id='+ newId +']').length) {
                         $('input[data-id='+ newId +']').attr('name', 'separator['+id+']');
                         $('input[data-id='+ newId +']').attr('data-id', id );
                         $('br[data-id='+ newId +']').attr('data-id', id );
@@ -139,10 +131,8 @@ function getReady(response)
                     }
                 }); 
                 
-                function findNextId(id, oldId)
-                {
-                    if($('#identifier [data-id='+ id +']').length)
-                    {
+                function findNextId(id, oldId) {
+                    if($('#identifier [data-id='+ id +']').length) {
                         $('input[data-id='+ id +']').attr('name', 'separator['+oldId+']');
                         $('input[data-id='+ id +']').attr('data-id', oldId );
                         $('br[data-id='+ id +']').attr('data-id', oldId );
@@ -151,13 +141,14 @@ function getReady(response)
                         $('select[data-id='+ id +']').attr('data-id', oldId );
                         findNextId(id + 1 , id);
                     } else {
-                        return;
+
                     }
                 }              
                     
                 $('#identifier select[name=id]').html(identifier);
+                $('#identifier select[name=id_razmer]').html('<option value="">Выберите колонку...</option>'+identifier);
                 $('#identifier select[name="skuId[1]"]').html(identifier);
-                $('#identifier select[name="skuId[1]"] option[value=1]').attr('selected','selected'); 
+                $('#identifier select[name="skuId[1]"] option[value="1"]').attr('selected','selected');
                 $('#identifier').show();   
                 
                 if(response.data.config){
@@ -186,6 +177,7 @@ function getReady(response)
                     $('#buttonSaveConfig').addClass('grey');
                     
                     $('#identifier select[name=id] option[value="'+response.data.config.id+'"]').attr('selected','selected');
+                    $('#identifier select[name=id_razmer] option[value="'+response.data.config.id_razmer+'"]').attr('selected','selected');
                     
                     $('#tableImport *').removeClass('ffb');
                     $('#tableImport [data-id="'+response.data.config.id+'"]').addClass('ffb');                   
@@ -239,18 +231,14 @@ function getReady(response)
                 
                 $('#upload_file_new #re_error').hide(); 
                 $('#upload_file_new #re_errorformat').hide();  
-            }
-            else
-            {
+            } else {
                 $('#upload_file_new input[type=submit]').removeClass('yellow').addClass('red');
                 $('#upload_file_new #re_succes').hide(); 
                 $('#upload_file_new #re_error').hide();
                 $('#upload_file_new #re_errorformat').show();  
             }
             $('#saveConfiguration').show();
-          }
-          else
-          {
+          } else {
             $('#upload_file_new input[type=submit]').removeClass('yellow').addClass('red');
             $('#upload_file_new #re_succes').hide(); 
             $('#upload_file_new #re_error').show();   

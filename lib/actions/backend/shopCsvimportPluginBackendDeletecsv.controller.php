@@ -25,9 +25,8 @@ class shopCsvimportPluginBackendDeletecsvController extends waJsonController {
             fclose($file_handle);
             
             $upProd = fopen('wa-apps/shop/plugins/csvimport/files/addedSkus.csv','w');
-            foreach($datas as $d)
-            {
-                fputcsv($upProd, $d, ';');
+            foreach($datas as $d) {
+                fputcsv($upProd, (array)$d, ';');
             }
             fclose($upProd);
             

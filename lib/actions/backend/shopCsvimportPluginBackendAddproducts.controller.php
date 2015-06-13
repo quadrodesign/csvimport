@@ -42,44 +42,31 @@ class shopCsvimportPluginBackendAddproductsController extends waLongActionContro
         $this->data['header'] = $this->convert(fgetcsv($fp,0,';'));
         $this->data['total_count'] = 0; 
         
-        while( $line = fgetcsv($fp,0,';') )
-          {
+        while($line = fgetcsv($fp,0,';')) {
             $this->data['total_count']++;
-          }
+        }
         fclose($fp);
         
-        foreach($this->data['info'] as $key => $header)
-        {
+        foreach($this->data['info'] as $key => $header){
             $data = explode(':', (string)$header);
-            if(is_numeric($key))
-            {
-                if($data[0] == 'skus')
-                {
-                    if($data[2] == 'stock')
-                    {
+            if(is_numeric($key)) {
+                if($data[0] == 'skus') {
+                    if($data[2] == 'stock') {
                         $this->data['skus']['stocks'][$data[3]] = $key;
                         if($this->data['info']['regim'] == 4){
                             $this->model->query("UPDATE shop_product_stocks SET count='0' WHERE stock_id = '".$data[3]."'");
                         }
-                    }
-                    else
-                    {
+                    } else {
                         $this->data['skus'][$data[2]] = $key;
                     }
-                }
-                else if($data[0] == 'features')
-                {
+                } else if($data[0] == 'features') {
                     $feats = $this->feature_model->getByCode($data[1]);
                     $this->data['features'][$header]['name'] = $feats['name'];
                     $this->data['features'][$header]['code'] = $data[1];
                     $this->data['features'][$header]['key'] = $key;
-                }
-                else if($data[0] == 'images')
-                {
+                } else if($data[0] == 'images') {
                         $this->data['images'][] = $key;
-                }
-                else
-                {
+                } else {
                     $this->data['products'][$data[0]] = $key;
                                     
                 }                
@@ -114,8 +101,7 @@ class shopCsvimportPluginBackendAddproductsController extends waLongActionContro
     
     protected function reconvert($str) 
     {
-        foreach($str as $key => $s)
-        {
+        foreach($str as $key => $s) {
             $string[$key] = iconv("UTF-8", "Windows-1251", $s);
         }
         return $string;
@@ -131,43 +117,31 @@ class shopCsvimportPluginBackendAddproductsController extends waLongActionContro
     {
         $identifierId = $this->data['info']['id'];
         $explodeData = explode(':', $this->data['info'][$identifierId]);
-        if(isset($explodeData[1]))
-        {
-            if($explodeData[0] == 'features')
-            {
+        if(isset($explodeData[1])) {
+            if($explodeData[0] == 'features') {
                 $feats = $this->feature_model->getByCode($explodeData[1]);
                     
                 $result = explode('.',$feats['type']);
                 $and = isset($result[1]) ? "AND type='".$result[1]."' " : "" ;
                 $values = $this->model->query("SELECT * FROM shop_feature_values_".$result[0]." WHERE feature_id = '".$feats['id']."' ".$and)->fetchAll();
                 $val = array();
-                if($values)
-                {
-                    foreach($values as $v)
-                    {
-                        if(!empty($csvInfo[$identifierId]))
-                        {
-                            if($csvInfo[$identifierId] == $v['value'])
-                            {
+                if($values) {
+                    foreach($values as $v) {
+                        if(!empty($csvInfo[$identifierId])) {
+                            if($csvInfo[$identifierId] == $v['value']) {
                                 return $this->model->query("SELECT product_id FROM shop_product_features WHERE feature_id='".$v['feature_id']."' AND feature_value_id='".$v['id']."'")->fetchField();
                             }
                         }
                     }
                 }
                 return false;
-            } 
-            elseif($explodeData[0] == 'skus')
-            {
+            } elseif($explodeData[0] == 'skus') {
                 $where = $explodeData[2].'='.$csvInfo[$identifierId];
                 return $this->model->query("SELECT product_id FROM shop_product_skus WHERE ".$where)->fetchField();
-            }
-            else
-            {
+            } else {
                 return false;
             }
-        }
-        else
-        {
+        } else {
             return $this->model->query("SELECT id FROM shop_product WHERE ".$explodeData[0]." = '".$csvInfo[$identifierId]."'")->fetchField();
         }
     }
@@ -179,11 +153,8 @@ class shopCsvimportPluginBackendAddproductsController extends waLongActionContro
         $fp = fopen($this->data['info']['path'].$this->data['info']['name_file'],'r');
         $this->data['header'] = $this->convert(fgetcsv($fp,0,';'));
         $indicator = 0;
-        while($line = fgetcsv($fp,0,';'))
-        {
-            
-            if($indicator >= $this->data['offset'])
-            {
+        while($line = fgetcsv($fp,0,';')) {
+            if($indicator >= $this->data['offset']) {
                 if(($this->data['offset'] - $start) <= $limit){
                     $csvInfo = $this->convert($line);
                     $productId = $this->getProductId($csvInfo);
@@ -191,8 +162,7 @@ class shopCsvimportPluginBackendAddproductsController extends waLongActionContro
                     $data = array();
                     
                     if(isset($this->data['products'])) {
-                        foreach($this->data['products'] as $key => $value)
-                        {
+                        foreach($this->data['products'] as $key => $value) {
                             $data[$key] = $csvInfo[$value];
                         }
                     }
@@ -204,42 +174,91 @@ class shopCsvimportPluginBackendAddproductsController extends waLongActionContro
                             $product = $product_model->getById($productId);
                             
                             $p = new shopProduct($product);
-                            $p->save($data, true, $errors);
                             
-                            $category_products_model = new shopCategoryProductsModel();
-                            $category_products_model->add($productId, 17);
+                            if(isset($this->data['features'])) {
+                                $dataFeat = array();
+                                $not_update = false;
+                                $features_model =  new shopFeatureModel();
+                                foreach($this->data['features'] as $features) {
+                                    $feats = $features_model->getByCode($features['code']);
+                                    $result = explode('.',$feats['type']);
+                                    $and = isset($result[1]) ? "AND type='".$result[1]."' " : "" ;
+                                    $values = $this->model->query("SELECT value FROM shop_feature_values_".$result[0]." WHERE feature_id = '".$feats['id']."' ".$and)->fetchAll();
+                                    $val = array();
+                                    if($values){
+                                        foreach($values as $v){
+                                            $val[] = $v['value'];
+                                        }
+                                    }
+                                    
+                                    if($csvInfo[$features['key']]){
+                                        if(is_numeric($this->data['info']['id_razmer'])) {
+                                            if($features['key'] == $this->data['info']['id_razmer'] && $productId) {
+                                                if($size = shopTablesizePlugin::getSiteSize($productId,$csvInfo[$features['key']])) {
+                                                    $old_feat = $csvInfo[$features['key']];
+                                                    $csvInfo[$features['key']] = $size;
+                                                    $razmer['code'] = $features['code'];
+                                                    $razmer['value'] = $size;
+                                                }
+                                            }
+                                        }
+                                        if(in_array($csvInfo[$features['key']], $val)){
+                                            $dataFeat[$features['code']] = $csvInfo[$features['key']];
+                                        } else {
+                                            if(isset($this->data['info']['checkbox']['features'][$features['code']])){
+                                                $dataFeat[$features['code']] = $csvInfo[$features['key']];
+                                            } else {
+                                                $not_update = true;
+                                            }
+                                        }
+                                    }
+                                    unset($val); 
+                                }
+                                if($not_update == false) {
+                                    $feature_model = new shopProductFeaturesModel();
+                                    $feature_model->setData($p,$dataFeat); unset($dataFeat);
+                                }
+                            }
+                            
+                            if($not_update == false) {
+                                $p->save($data, true, $errors);
+                            
+                                $category_products_model = new shopCategoryProductsModel();
+                                $category_products_model->add($productId, 17);
+                            }
                             
                             $skuName = $csvInfo[$this->data['info']['skuId'][1]];
                         
                             if(isset($this->data['info']['separator'])) {
-                                foreach($this->data['info']['separator'] as $key => $sku)
-                                {
+                                foreach($this->data['info']['separator'] as $key => $sku) {
                                     $skuName .= $sku;
-                                    $skuName .= $csvInfo[$this->data['info']['skuId'][$key]];
+                                    if($this->data['info']['id_razmer'] == $this->data['info']['skuId'][$key]){
+                                        $skuName .= $old_feat;
+                                    } else {
+                                        $skuName .= $csvInfo[$this->data['info']['skuId'][$key]];
+                                    }
                                 }
                             }
                             
-                            if(is_array($this->data['skus']))
-                            {
+                            if(is_array($this->data['skus']) && $not_update == false) {
                                 $skuData = array();    
                                 
                                 $skus_model = new shopProductSkusModel();
                                 
                                 $skuId = $this->model->query("SELECT id FROM shop_product_skus WHERE sku = '".$skuName."' AND product_id = '".$productId."'")->fetchField();
                                 
-                                foreach($this->data['skus'] as $key => $value)
-                                {
+                                foreach($this->data['skus'] as $key => $value) {
                                     if($key == 'stocks'){
                                         if($this->data['info']['regim'] == 1 || $this->data['info']['regim'] == 4){
                                             $skuData['count'] =  isset($value[0]) && isset($csvInfo[$value[0]]) ? $csvInfo[$value[0]] : '';
                                             unset($this->data['skus']['stocks'][0]);
-                                            if(count($this->data['skus']['stocks']))
-                                            {
-                                                foreach($this->data['skus']['stocks'] as $stock_id => $stock)
-                                                {
-                                                    if($csvInfo[$stock] || $csvInfo[$stock] === 0)
-                                                    {
+                                            if(count($this->data['skus']['stocks'])) {
+                                                foreach($this->data['skus']['stocks'] as $stock_id => $stock) {
+                                                    if($csvInfo[$stock] || $csvInfo[$stock] === 0) {
                                                         $skuData['stock'][$stock_id] = $csvInfo[$stock];
+                                                        if($csvInfo[$stock] > 0) {
+                                                            $is_available = true;
+                                                        }
                                                     }
                                                 }
                                             }
@@ -248,15 +267,12 @@ class shopCsvimportPluginBackendAddproductsController extends waLongActionContro
                                             if($skuInfo){
                                                 $count = $skuInfo['count'];}
                                             
-                                            if($csvInfo[$value[0]] || $csvInfo[$value[0]] === 0)
-                                            {
+                                            if($csvInfo[$value[0]] || $csvInfo[$value[0]] === 0) {
                                                 $skuData['count'] = $csvInfo[$value[0]] + $count;
                                             }   
                                             unset($this->data['skus']['stocks'][0]); unset($count);
-                                            if(count($this->data['skus']['stocks']))
-                                            {
-                                                foreach($this->data['skus']['stocks'] as $stock_id => $stock)
-                                                {
+                                            if(count($this->data['skus']['stocks'])) {
+                                                foreach($this->data['skus']['stocks'] as $stock_id => $stock) {
                                                     if($skuInfo){
                                                         $count = $skuInfo['stock'][$stock_id] ? $skuInfo['stock'][$stock_id] : 0;}
                                                     if($csvInfo[$stock] || $csvInfo[$stock] === 0){
@@ -268,14 +284,13 @@ class shopCsvimportPluginBackendAddproductsController extends waLongActionContro
                                         } elseif ($this->data['info']['regim'] == 3) {
                                             $skuInfo = $skus_model->getSku($skuId);
                                             if($skuInfo){
-                                                $count = $skuInfo['count'] ? $skuInfo['count'] : 0;}
+                                                $count = $skuInfo['count'] ? $skuInfo['count'] : 0;
+                                            }
                                                 
                                             $skuData['count'] = $csvInfo[$value[0]] - $count;
                                             unset($this->data['skus']['stocks'][0]); unset($count);
-                                            if(count($this->data['skus']['stocks']))
-                                            {
-                                                foreach($this->data['skus']['stocks'] as $stock_id => $stock)
-                                                {
+                                            if(count($this->data['skus']['stocks'])) {
+                                                foreach($this->data['skus']['stocks'] as $stock_id => $stock) {
                                                     if($skuInfo){
                                                         $count = $skuInfo['stock'][$stock_id] ? $skuInfo['stock'][$stock_id] : 0;}
                                                     if($csvInfo[$stock] || $csvInfo[$stock] === 0){
@@ -290,19 +305,27 @@ class shopCsvimportPluginBackendAddproductsController extends waLongActionContro
                                     }  
                                 }
                                 $skuData['sku'] = $skuName;
-                                if(!isset($skuData['price'])) {
-                                    $skuInfo = $skus_model->getSku($skuId);
-                                    $skuData['price'] = $skuInfo['price'];
+                                
+                                if($this->data['info']['regim'] == 4){
+                                    if(!isset($is_available)){
+                                        $skuData['available'] = 0;
+                                    }
                                 }
                                 
-                                if($skuId && $this->data['info']['checkbox']['updateSkus'])
-                                {
-                                    $skus_model->update($skuId, $skuData);
+                                if(!isset($skuId)) {
+                                    $prod = new shopProduct($productId);
+                                    $skuData['price'] = $prod['price'] == 0 ? $prod['base_price_selectable'] : $prod['price'] ;
                                 }
-                                else
-                                {
-                                    if($this->data['info']['checkbox']['newSkus'] && !$skuId)
-                                    {
+                                
+                                if(isset($razmer)) {
+                                    $skuData['features'][$razmer['code']] = $razmer['value'];
+                                    unset($razmer);
+                                }
+                                
+                                if($skuId && $this->data['info']['checkbox']['updateSkus']) {
+                                    $skus_model->update($skuId, $skuData);
+                                } else {
+                                    if($this->data['info']['checkbox']['newSkus'] && !$skuId) {
                                         $skuId = $this->model->query("SELECT id FROM shop_product_skus WHERE sku = '' AND product_id = '".$productId."'")->fetchField();
                                         if($skuId) {
                                             $skus_model->update($skuId, $skuData);
@@ -316,89 +339,104 @@ class shopCsvimportPluginBackendAddproductsController extends waLongActionContro
                                 } 
                             }
                             
-                            if(isset($this->data['images']))
-                            {
-                                foreach($this->data['images'] as $value)
-                                {
+                            if(isset($this->data['images'])) {
+                                foreach($this->data['images'] as $value) {
                                     $images[] = $csvInfo[$value];
                                     $this->addImages($images, $productId);
                                 }
                             }
-                            
-                            if(isset($this->data['features']))
-                            {
-                                $dataFeat = array();
-                                $features_model =  new shopFeatureModel();
-                                foreach($this->data['features'] as $features)
-                                {
-                                    $feats = $features_model->getByCode($features['code']);
-                    
-                                    $result = explode('.',$feats['type']);
-                                    $and = isset($result[1]) ? "AND type='".$result[1]."' " : "" ;
-                                    $values = $this->model->query("SELECT value FROM shop_feature_values_".$result[0]." WHERE feature_id = '".$feats['id']."' ".$and)->fetchAll();
-                                    $val = array();
-                                    if($values){
-                                        foreach($values as $v){
-                                            $val[] = $v['value'];
-                                        }
-                                    }
-                                    
-                                    if($csvInfo[$features['key']]){
-                                        if(in_array($csvInfo[$features['key']], $val)){
-                                            $dataFeat[$features['code']] = $csvInfo[$features['key']];
-                                        } else {
-                                            if($this->data['info']['checkbox']['features'][$features['code']]){
-                                                $dataFeat[$features['code']] = $csvInfo[$features['key']];
+                        } else {
+                            if(isset($this->data['info']['checkbox']['newProd'])) {
+                                $p = new shopProduct();
+                                
+                                if($this->data['features']) {
+                                    $dataFeat = array();
+                                    $not_update = false;
+                                    $features_model =  new shopFeatureModel();
+                                    foreach($this->data['features'] as $features) {
+                                        $feats = $features_model->getByCode($features['code']);
+                                        $result = explode('.',$feats['type']);
+                                        $and = $result[1] ? "AND type='".$result[1]."' " : "" ;
+                                        $values = $this->model->query("SELECT value FROM shop_feature_values_".$result[0]." WHERE feature_id = '".$feats['id']."' ".$and)->fetchAll();
+                                        $val = array();
+                                        if($values){
+                                            foreach($values as $v){
+                                                $val[] = $v['value'];
                                             }
                                         }
+                                        
+                                        if($csvInfo[$features['key']]){
+                                            if(is_numeric($this->data['info']['id_razmer'])) {
+                                                if($features['key'] == $this->data['info']['id_razmer'] && $productId) {
+                                                    if($size = shopTablesizePlugin::getSiteSize($productId,$csvInfo[$features['key']])) {
+                                                        $old_feat = $csvInfo[$features['key']];
+                                                        $csvInfo[$features['key']] = $size;
+                                                        $razmer['code'] = $features['code'];
+                                                        $razmer['value'] = $size;
+                                                    }
+                                                }
+                                            }
+                                            if(in_array($csvInfo[$features['key']], $val)){
+                                                $dataFeat[$features['code']] = $csvInfo[$features['key']];
+                                            } else {
+                                                if(isset($this->data['info']['checkbox']['features'][$features['code']])){
+                                                    $dataFeat[$features['code']] = $csvInfo[$features['key']];
+                                                } else {
+                                                    $not_update = true;
+                                                }
+                                            }
+                                        }
+                                        unset($val); 
                                     }
-                                    unset($val); 
+                                } else {
+                                    $not_update = false;
                                 }
-                                $feature_model = new shopProductFeaturesModel();
-                                $feature_model->setData($p,$dataFeat); unset($dataFeat); 
-                            }
-                        }
-                        else
-                        {
-                            if($this->data['info']['checkbox']['newProd'])
-                            {
-                                $p = new shopProduct();
-                                if ($p->save($data, true, $errors)) {
+                                
+                                if ($p->save($data, true, $errors) && $not_update == false) {
                                 $productId = $p->getId();
                                 
                                 $category_products_model = new shopCategoryProductsModel();
                                 $category_products_model->add($productId, 17);
                                 
-                                if(is_array($this->data['skus']))
-                                {
+                                if(is_array($this->data['skus'])) {
                                     $skuData = array();
+                                    
+                                    $stock_model = new shopStockModel();
+                                    $stocks = $stock_model->getAll('id');
+                                    
+                                    foreach($stocks as $key => $st) {
+                                        $skuData['stock'][$key] = 0;
+                                    }
                                     
                                     $skuName = $csvInfo[$this->data['info']['skuId'][1]];
                             
-                                    foreach($this->data['info']['separator'] as $key => $sku)
-                                    {
+                                    foreach($this->data['info']['separator'] as $key => $sku) {
                                         $skuName .= $sku;
-                                        $skuName .= $csvInfo[$this->data['info']['skuId'][$key]];
+                                        if($this->data['info']['id_razmer'] == $this->data['info']['skuId'][$key]){
+                                            $skuName .= $old_feat;
+                                        } else {
+                                            $skuName .= $csvInfo[$this->data['info']['skuId'][$key]];
+                                        }
                                     }
                                     
                                     $skus_model = new shopProductSkusModel();
                                     
                                     $skuId = $this->model->query("SELECT id FROM shop_product_skus WHERE sku = '".$skuName."' AND product_id = '".$productId."'")->fetchField();
                                 
-                                    foreach($this->data['skus'] as $key => $value)
-                                    {
+                                    foreach($this->data['skus'] as $key => $value) {
                                         if($key == 'stocks'){
                                             if($csvInfo[$value[0]]){
                                                 $skuData['count'] = $csvInfo[$value[0]];
                                             }
                                             
                                             unset($this->data['skus']['stocks'][0]);
-                                            if(count($this->data['skus']['stocks']))
-                                            {
-                                                foreach($this->data['skus']['stocks'] as $stock_id => $stock)
-                                                {
+                                            if(count($this->data['skus']['stocks'])) {
+                                                foreach($this->data['skus']['stocks'] as $stock_id => $stock) {
                                                     if($csvInfo[$stock]){
                                                         $skuData['stock'][$stock_id] = $csvInfo[$stock];
+                                                        if($csvInfo[$stock] > 0){
+                                                            $is_available = true;
+                                                        }
                                                     }
                                                 }
                                             }
@@ -408,15 +446,26 @@ class shopCsvimportPluginBackendAddproductsController extends waLongActionContro
                                     }
                                     $skuData['sku'] = $skuName;
                                     
-                                    
-                                    if($skuId && $this->data['info']['checkbox']['updateSkus'])
-                                    {
-                                        $skus_model->update($skuId, $skuData);
+                                    if($this->data['info']['regim'] == 4){
+                                        if(!isset($is_available)){
+                                            $skuData['available'] = 0;
+                                        }
                                     }
-                                    else
-                                    {
-                                        if($this->data['info']['checkbox']['newSkus'] && !$skuId)
-                                        {
+                                    
+                                    if(!isset($skuData['price'])) {
+                                        $prod = new shopProduct($productId);
+                                        $skuData['price'] = $prod['price'];
+                                    }
+                                    
+                                    if(isset($razmer)) {
+                                        $skuData['features'][$razmer['code']] = $razmer['value'];
+                                        unset($razmer);
+                                    }
+                                    
+                                    if($skuId && $this->data['info']['checkbox']['updateSkus']) {
+                                        $skus_model->update($skuId, $skuData);
+                                    } else {
+                                        if($this->data['info']['checkbox']['newSkus'] && !$skuId) {
                                             $skuId = $this->model->query("SELECT id FROM shop_product_skus WHERE sku = '' AND product_id = '".$productId."'")->fetchField();
                                             if($skuId) {
                                                 $skus_model->update($skuId, $skuData);
@@ -431,14 +480,19 @@ class shopCsvimportPluginBackendAddproductsController extends waLongActionContro
                                 } 
                             }
                             
-                            if($this->data['features'])
-                            {
+                            if($this->data['images']) {
+                                foreach($this->data['images'] as $value) {
+                                    $images[] = $csvInfo[$value];
+                                    $this->addImages($images, $productId);
+                                    unset($images);
+                                }
+                            }
+                            
+                            if($this->data['features']) {
                                 $dataFeat = array();
                                 $features_model =  new shopFeatureModel();
-                                foreach($this->data['features'] as $features)
-                                {
+                                foreach($this->data['features'] as $features) {
                                     $feats = $features_model->getByCode($features['code']);
-                    
                                     $result = explode('.',$feats['type']);
                                     $and = $result[1] ? "AND type='".$result[1]."' " : "" ;
                                     $values = $this->model->query("SELECT value FROM shop_feature_values_".$result[0]." WHERE feature_id = '".$feats['id']."' ".$and)->fetchAll();
@@ -450,28 +504,25 @@ class shopCsvimportPluginBackendAddproductsController extends waLongActionContro
                                     }
                                     
                                     if($csvInfo[$features['key']]){
+                                        if(is_numeric($this->data['info']['id_razmer'])) {
+                                            if($features['key'] == $this->data['info']['id_razmer'] && $productId) {
+                                                if($size = shopTablesizePlugin::getSiteSize($productId,$csvInfo[$features['key']])) {
+                                                    $csvInfo[$features['key']] = $size;
+                                                }
+                                            }
+                                        }
                                         if(in_array($csvInfo[$features['key']], $val)){
                                             $dataFeat[$features['code']] = $csvInfo[$features['key']];
                                         } else {
-                                            if($this->data['info']['checkbox']['features'][$features['code']]){
+                                            if(isset($this->data['info']['checkbox']['features'][$features['code']])){
                                                 $dataFeat[$features['code']] = $csvInfo[$features['key']];
-                                            }
+                                            } 
                                         }
                                     }
                                     unset($val); 
                                 }
                                 $feature_model = new shopProductFeaturesModel();
-                                $feature_model->setData($p,$dataFeat); unset($dataFeat); 
-                            }
-                            
-                            if($this->data['images'])
-                            {
-                                foreach($this->data['images'] as $value)
-                                {
-                                    $images[] = $csvInfo[$value];
-                                    $this->addImages($images, $productId);
-                                    unset($images);
-                                }
+                                $feature_model->setData($p,$dataFeat); unset($dataFeat);
                             }
                         }
                     } 
@@ -484,7 +535,6 @@ class shopCsvimportPluginBackendAddproductsController extends waLongActionContro
             } 
         }
         fclose($fp);
-        
         sleep(1);
     }
 
@@ -519,16 +569,14 @@ class shopCsvimportPluginBackendAddproductsController extends waLongActionContro
     
     protected function addImages($images, $p_id)
     {
-        foreach($images as $imageUrl)
-        {
-            if($imageUrl)
-            {
+        foreach($images as $imageUrl) {
+            if($imageUrl) {
                 $search = array(
                     'product_id' => $p_id,
                     'ext'        => pathinfo(urldecode($imageUrl), PATHINFO_EXTENSION),
                 );
                 
-                $name = preg_replace('@[^a-zA-ZР°-СЏРђ-РЇ0-9\._\-]+@', '', basename(urldecode($imageUrl)));
+                $name = preg_replace('@[^a-zA-Zа-яА-Я0-9\._\-]+@', '', basename(urldecode($imageUrl)));
                 if (empty($search['ext']) || !in_array($search['ext'], array('jpeg', 'jpg', 'png', 'gif'))) {
                     $search['ext'] = 'jpeg';
                     $name .= '.'.$search['ext'];
@@ -542,11 +590,12 @@ class shopCsvimportPluginBackendAddproductsController extends waLongActionContro
                         'ext'        => $matches[5],
                     );
                     
-                    if ((strpos($imageUrl, shopImage::getUrl($image, $matches[3])) !== false) && $model->getByField($image)) {
-                        #skip local file
-                        $target = 'skip';
-                        $imageUrl = null;
-                    }
+//TODO:model id undefined here
+//                    if ((strpos($imageUrl, shopImage::getUrl($image, $matches[3])) !== false) && $model->getByField($image)) {
+//                        #skip local file
+//                        $target = 'skip';
+//                        $imageUrl = null;
+//                    }
                 }
                 
                 if ($imageUrl) {
