@@ -7,6 +7,5 @@ return array (
   array (
     'backend_menu' => 'backend_menu',
     'backend_product' => 'backend_product',  
-    'csvimport_filter' => 'csvimport_filter',
   ),
 );
