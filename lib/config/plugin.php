@@ -1,11 +1,12 @@
 <?php
 return array (
   'name' => 'CSV Import',
-  'icon' => 'img/csvimport.gif',
+  'icon' => 'plugins',
   'shop_settings' => true,
-  'handlers' => 
+  'importexport' => true,
+  'handlers' =>
   array (
-    'backend_menu' => 'backend_menu',
+//    'backend_menu' => 'backend_menu',
     'backend_product' => 'backend_product',  
   ),
 );

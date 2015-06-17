@@ -1,0 +1,532 @@
+<link href="{$wa_url}wa-apps/shop/plugins/csvimport/css/csvImportLoad.css" rel="stylesheet" type="text/css">
+<script type="text/javascript" src="{$wa_url}wa-apps/shop/plugins/csvimport/js/csvImportLoad.js"></script>
+<div class="float-left" style="  width: 100%;">
+<div id="uploadFile">
+    <div class="field" style="">
+        <div class="name">
+          CSV
+        </div>
+        <div class="value" style="margin-left: 100px!important;">
+            <form id="upload_file_new" action="#" method="post" enctype="multipart/form-data">
+                {$wa->csrf()}
+                <input type="file" name="file" value="">
+                <select name="charset">
+                    <option value="UTF-8">UTF-8</option>
+                    <option value="Windows-1251">Windows-1251</option>
+                </select> 
+                {if $config} 
+                <select name="config">
+                    <option value="">Выберите конфигурацию...</option>
+                    {foreach $config as $c}
+                    <option value="{$c.name}">{$c.name}</option>
+                    {/foreach}
+                </select>
+                {/if}
+                <input type="submit" value="Загрузить" class="button green"><i style="display: none;" class="icon16 loading"></i>
+                <span id="re_succes" style="color: green; font-weight: bold; font-style: italic;display: none;"> Файл загружен</span>
+                <span id="re_error" style="color: red; font-weight: bold; font-style: italic;display: none;"> Ошибка при загрузке</span>
+                <span id="re_errorformat" style="color: red; font-weight: bold; font-style: italic;display: none;"> Неправельный формат файла(загрузите в .csv формате)</span>
+                <input type="hidden" name="path" value="">
+                <input type="hidden" name="name_file" value="">
+            </form>
+        </div>
+    </div>
+    <br /><hr />
+</div><br />
+
+<div id="addSkus">
+    <script>
+    $(document).keypress(function(e) {
+        if(e.which == 13) {
+            $('#searchSku').click();
+        }
+    });
+    
+    $(document).ready(function(){
+       $('#addSkus input[name="skus[sku]"]').live('change', function(){
+            if($(this).val().length) {
+                $('#addSkus input[name="skus[barcode]"]').attr('readonly','readonly');
+            } else {
+                $('#addSkus input[name="skus[barcode]"]').removeAttr('readonly');
+            }
+       });
+       
+       $('#addSkus input[name="skus[barcode]"]').live('change', function(){
+            if($(this).val().length) {
+                $('#addSkus input[name="skus[sku]"]').attr('readonly','readonly');
+            } else {
+                $('#addSkus input[name="skus[sku]"]').removeAttr('readonly');
+            }
+       });
+       
+       $('#addSkus i.delete').live('click', function(){
+            var tr = $(this).closest('tr');
+            var id = tr.data('sku');
+            var url = '?plugin=csvimport&module=backend&action=deletecsv';
+            $.post(url, { id:id}, function(response){
+                if(response.status == 'ok') {
+                    tr.remove();
+                    var i = 1;
+                    $('#addSkus table.zebra tbody tr').each(function(){
+                        $(this).find('td:first').html(i);
+                        i = i + 1;
+                    });
+                }
+            },'json');
+       });
+       
+       $('#searchSku').live('click',function(){
+            if($('#addSkus input[name="skus[sku]"]').val().length || $('#addSkus input[name="skus[barcode]"]').val().length){
+                var url = '?plugin=csvimport&module=backend&action=searchsku';
+                var query = $('#addSkus input[name="skus[sku]"]').val().length ? $('#addSkus input[name="skus[sku]"]').val() : $('#addSkus input[name="skus[barcode]"]').val();
+                var val = $('#addSkus input[name="skus[sku]"]').val().length ? 'sku' : 'barcode';
+                $.post(url,{ query:query, val: val}, function(response){
+                    if(response.status == 'ok') {
+                        if(response.data.message == 'fail') {
+                            $('#addSkus #re_notfound').fadeIn(600).delay(1000).fadeOut(700);
+                            
+                            if($('#embed_player').length) {
+                                $('#embed_player').remove();
+                            }
+                            $('#addSkus #re_notfound').after('<embed id="embed_player" src="{$wa_url}wa-apps/shop/plugins/csvimport/audio/kaspersky.mp3" autostart="true" hidden="true"></embed>');
+                        } else {
+                            $('#addSkus table.zebra').show();
+                            $('#addSkus input[name="downloadCsv"]').show();
+                            $('#addSkus select[name="config_"]').show();
+                            
+                            var html = '';
+                            html += '<tr data-sku="'+response.data.result.sku.id+'">';
+                            html += '<td></td>';
+                            html += '<td>'+response.data.result.name+'</td>';
+                            html += '<td>'+response.data.result.sku.sku+'</td>';
+                            
+                            if($('#addSkus table.zebra tr[data-sku="'+response.data.result.sku.id+'"]').length) {
+                                var value = parseInt($('#addSkus table.zebra tr[data-sku="'+response.data.result.sku.id+'"]').length) + 1;
+                                html += '<td>'+value+'</td>';
+                            } else {
+                                html += '<td>1</td>';
+                            }
+                            
+                            html += '<td>'+response.data.result.sku.count+'</td>';
+                            
+                            $.each(response.data.result.sku.stocks, function(index, value){
+                                    html += '<td>'+value+'</td>';
+                            });
+                            
+                            html += '<td><i style="cursor: pointer;" class="icon16 delete"></i></td>';
+                            html += '</tr>';
+                            $('#addSkus table tbody').append(html);
+                            
+                            var i = 1;
+                            $('#addSkus table.zebra tbody tr').each(function(){
+                                $(this).find('td:first').html(i);
+                                i = i + 1;
+                            });
+                            
+                            $('#addSkus input[name="skus[sku]"]').val('');
+                            $('#addSkus input[name="skus[barcode]"]').val('');
+                            $('#addSkus #re_succes').fadeIn(600).delay(1000).fadeOut(700);
+                            
+                            if($('#embed_player').length) {
+                                $('#embed_player').remove();
+                            }
+                            $('#addSkus #re_notfound').after('<embed id="embed_player" src="{$wa_url}wa-apps/shop/plugins/csvimport/audio/ok.mp3" autostart="true" hidden="true"></embed>');
+                            
+                        }
+                    } else {
+                        $('#addSkus #error').fadeIn(600).delay(1000).fadeOut(700);
+                        if($('#embed_player').length) {
+                                $('#embed_player').remove();
+                            }
+                            $('#addSkus #re_notfound').after('<embed id="embed_player" src="{$wa_url}wa-apps/shop/plugins/csvimport/audio/kaspersky.mp3" autostart="true" hidden="true"></embed>');
+                    }
+                },'json');
+            } else {
+                $('#addSkus #re_error').fadeIn(600).delay(1000).fadeOut(700);
+                if($('#embed_player').length) {
+                                $('#embed_player').remove();
+                            }
+                            $('#addSkus #re_notfound').after('<embed id="embed_player" src="{$wa_url}wa-apps/shop/plugins/csvimport/audio/kaspersky.mp3" autostart="true" hidden="true"></embed>');
+            }
+       });
+       
+       $('#addSkus input[name="downloadCsv"]').live('click', function(){
+            if($('#addSkus table tbody tr').length) {
+                var config = $(this).closest('div').find('[name="config_"]').val();
+                var url = '?plugin=csvimport&module=backend&action=load';
+                $.post(url, { config:config, name: 'addedSkus.csv'}, function(response){
+                    getReady(response);
+                },'json');
+            } else {
+                $('#addSkus #er_dow').fadeIn(600).delay(1000).fadeOut(700);
+            }
+       });  
+    });
+    </script>
+    <table class="related zebra" style="max-width: 1000px; {if !$data} display: none;{/if}">
+        <thead>
+            <tr>
+                <th></th>
+                <th>Наименование</th>
+                <th>Артикул</th>
+                <th>Итого</th>
+                <th>В наличии</th>
+                {foreach $stocks as $s}
+                    <th>В наличии @{$s.name}</th>
+                {/foreach}
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+        {if $data}
+            {foreach $data as $d}
+            <tr data-sku="{$d.skuId}">
+                <td>{$d.ordin}</td>
+                <td>{$d[0]}</td>
+                <td>{$d[1]}</td>
+                <td>{$d[2]}</td>
+                <td>{$d[3]}</td>
+                {foreach $stocks as $s}
+                    <td>{$d.stock[$s.id]}</td>
+                {/foreach}
+                <td><i style="cursor: pointer;" class="icon16 delete"></i></td>
+            </tr>
+            {/foreach}
+        {/if}
+        </tbody>
+    </table>
+    <br />
+    <div class="field" style="">
+        <div class="name">
+          Искать товар
+        </div>
+        <div class="value" style="margin-left: 100px!important;">
+            Артикул: <input type="text" style="width: 100px;margin-right: 30px;" name="skus[sku]" value=""> 
+            Штрихкод: <input type="text" style="width: 100px;" name="skus[barcode]" value="">
+            <input type="button" id="searchSku" class="button green" value="Искать">
+            <span id="re_succes" style="color: green; font-weight: bold; font-style: italic;display: none;"> <i class="icon16 yes"></i></span>
+            <span id="re_repeat" style="color: red; font-weight: bold; font-style: italic;display: none;"> Товар уже есть в списке</span>
+            <span id="re_error" style="color: red; font-weight: bold; font-style: italic;display: none;"> Заполните поля</span>
+            <span id="re_notfound" style="color: red; font-weight: bold; font-style: italic;display: none;"> Товар не найден</span>
+            <span id="error" style="color: red; font-weight: bold; font-style: italic;display: none;"> Произошла ошибка(попробуйте еще раз)</span>
+            <a href="{$wa_url}wa-apps/shop/plugins/csvimport/files/addedSkus.csv" download>Скачать CSV</a>
+        </div>
+    </div>
+    <br /><br />
+    <div id="dow">
+        {if $config} 
+        <select name="config_" {if !$data} style="display: none;"{/if}>
+            <option value="">Выберите конфигурацию...</option>
+            {foreach $config as $c}
+            <option value="{$c.name}">{$c.name}</option>
+            {/foreach}
+        </select>
+        {/if}
+        <input type="button" class="button green" name="downloadCsv" value="Импортировать" {if !$data} style="display: none;"{/if}/>
+        <span id="er_dow" style="color: red; font-weight: bold; font-style: italic;display: none;"> Таблица пуста</span>
+        <span id="er_dow_file" style="color: red; font-weight: bold; font-style: italic;display: none;"> Произошла ошибка, попробуйте еще раз</span>  
+        <span id="linkToFile"></span>         
+    </div>
+    <br />
+    <hr />
+</div><br />
+
+<br />
+<br />
+<form id="allIdentifier">
+<div id="tableImport">
+</div>
+
+<div class="collrow">
+<div id="identifier" class="coll-1-2" style="display: none;">
+    <div class="field" style="">
+        <div class="name">
+          Преобразовать колонку по размерным таблицам
+        </div>
+        <div class="value" style="margin-left: 180px!important;">
+            <select name="id_razmer">
+            </select>  
+        </div>
+    </div>
+    <div class="field" style="">
+        <div class="name">
+          Режим работы
+        </div>
+        <div class="value" style="margin-left: 180px!important;">
+            <select name="regim">
+                <option value="1">Обновить остатки</option>
+                <option value="2">Прибавить остатки</option>
+                <option value="3">Уменьшить остатки</option>
+                <option value="4">Обновить остатки (с очисткой склада)</option>
+            </select>  
+        </div>
+    </div>
+    <div class="field" style="">
+        <div class="name">
+          Идентификатор товара
+        </div>
+        <div class="value" style="margin-left: 180px!important;">
+            <select name="id">
+            </select>  
+        </div>
+    </div>
+    <div class="field" style="">
+        <div class="name">
+          Идентификатор артикула
+        </div>
+        <div class="value" style="margin-left: 180px!important;">
+            <select class="skusIdentifier" style="margin-left: 23px;" name="skuId[1]" data-id="1">
+            </select>
+            <br />
+            <span style="cursor: pointer;" id="addSkuIdentifier"><i class="icon10 add"></i> добавить</span>  
+        </div>
+    </div>
+    <input type="hidden" name="path" value="">
+    <input type="hidden" name="name_file" value="">
+    <input type="hidden" name="charset" value="">
+ </form>   
+    <div class="field" style="margin-top: 30px;">
+        <div class="value" style="margin-left: 100px!important;">
+            <input type="button" id="verifiImport" class="button grey" value="Проверить параметры импорта"/>
+        </div>
+    </div>
+    <div  class="field" style="margin-top: 30px;">
+        <div class="value" id="progressBar" style="margin-left: 100px!important; display: none;">
+            <div class="progressbar blue" style="display: inline-block;">
+                <div class="progressbar-outer">
+                    <div class="progressbar-inner" id="my-custom-progressbar-id" style="width: 0%;"></div>
+                </div>
+            </div>
+            <div style="display: inline-block; vertical-align: top; line-height: 46px;" id="progressData">0%</div>
+    </div>
+</div>
+<div class="field re_succes_import" style="display: none;">
+    <div class="value">
+        <span id="re_succes_import" style="color: green; font-weight: bold; font-style: italic;display: none;"> Файл успешно обновлен</span>
+        <span id="re_error_import" style="color: red; font-weight: bold; font-style: italic;display: none;"> Ошибка при загрузке</span>
+    </div>
+</div>
+</div>
+
+<div id="saveConfiguration" class="coll-1-2" style="display: none;">
+    <div class="field" style="">
+        <div class="name">
+          Имя кофигурации
+        </div>
+        <div class="value" >
+            <input type="text" name="configName" value=""/>
+        </div>
+    </div>
+    <div class="field" style="">
+        <div class="value" >
+            <input type="button" id="buttonSaveConfig" class="button green" value="Сохранить конфигурацию"/>
+            <span id="config_succes" style="color: green; font-weight: bold; font-style: italic;display: none;"> Сохранено</span>
+        </div>
+    </div>
+</div>
+</div>
+
+</div>
+
+<div class="clear"></div>
+
+<style>
+.collrow:before{ content:''; clear:both; display: table; }
+.coll-1-2{ width: 50%; min-width: 380px; float:left; padding: 20px;
+-webkit-box-sizing: border-box; 
+  -moz-box-sizing: border-box;   
+  box-sizing: border-box;
+}
+</style>
+
+<script>
+$(document).ready(function(){
+    
+   $('#buttonSaveConfig').live('click', function(){
+        
+        if($('[name="configName"]').length)
+        {
+            $('.table-wrap thead select').addClass('notUsing');
+            var f = $('#allIdentifier').find('input, select').not('.notUsing');
+            var url = '?plugin=csvimport&module=backend&action=saveconfig';
+            $.post(url, f.serialize(), function(response){
+                if(response.status == 'ok')
+                {
+                    $('#config_succes').fadeIn(800).delay(1000).fadeOut(600);
+                    $('#buttonSaveConfig').attr('disabled', 'disabled');
+                    $('#buttonSaveConfig').removeClass('green');
+                    $('#buttonSaveConfig').addClass('grey');
+                }
+            },'json');
+        }
+        else
+        {
+            alert('Заполните поле "Имя кофигурации"');
+        }
+   }); 
+    
+    
+    
+    
+    
+  $('#verifiImport').live('click', function(){  
+   $('#verifiImport').attr('disabled', 'disabled');
+   var pull = [];
+   var url = '?plugin=csvimport&module=backend&action=verifidata';
+   $('.table-wrap thead select').addClass('notUsing');
+   var f = $('#allIdentifier').find('input, select').not('.notUsing');
+                        var processId;
+                        
+                        var cleanup = function() {
+                            $.post(url, { processId: processId, cleanup: 1 }, function(r) {
+                                // show statistic
+                                $('#progressData').text('100%');
+                                $('.progressbar #my-custom-progressbar-id').css('width', '100%');
+                                if (r.report) {
+                                    if(!$('.s-csv-importexport-stats').length)
+                                    {
+                                        $("#identifier .field:last").after(r.report);
+                                    }
+                                }
+                                $('#progressBar').closest('div').slideUp(800);
+                            }, 'json');
+                        };
+                        
+                        var step = function(delay) {
+                            delay = delay || 2000;
+                            var timer_id = setTimeout(function() {
+                                $.post(url, { processId:processId }, 
+                                    function(r) {
+                                        if (!r) {
+                                            step(3000);
+                                        } else if (r && r.ready) {
+                                            cleanup();
+                                        } else if (r && r.error) {
+                                        } else {
+                                            if (r && r.progress) {
+                                                var progress = parseFloat(r.progress.replace(/,/, '.'));
+                                                $('.progressbar #my-custom-progressbar-id').css('width', progress+'%');
+                                                $('#progressData').text(progress+'%');
+                                            }
+                                            if (r && r.warning) {
+                                            }
+                                            step();
+                                        }
+                                    }, 
+                                'json').error(function() {
+                                    step(3000);
+                                });
+                            }, delay);
+                            pull.push(timer_id);
+                        };
+                        
+                        $.post(url, f.serialize() , 
+                            function(r) {
+                                $('#verifiImport').closest('.field').hide();
+                                $('#progressBar').show();
+                                if (r && r.processId) {
+                                    processId = r.processId;
+                                    step(1000);   // invoke Runner
+                                    step();         // invoke Messenger
+                                } else if (r && r.error) {
+                                    form.find('errormsg').text(r.error);
+                                } else {
+                                    form.find('errormsg').text('Server error');
+                                }
+                            }, 
+                        'json').error(function() {
+                            form.find('errormsg').text('Server error');
+                        });
+   });
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+$('#productImport').live('click', function(){  
+   $('#productImport').attr('disabled', 'disabled');
+   var pull = [];
+   var url = '?plugin=csvimport&module=backend&action=addproducts';
+   $('.table-wrap thead select').addClass('notUsing');
+   var f = $('#allIdentifier').find('input, select').not('.notUsing');
+                        var processId;
+                        
+                        var cleanup = function() {
+                            $.post(url, { processId: processId, cleanup: 1 }, function(r) {
+                                // show statistic
+                                $('#progressData').text('100%');
+                                $('.progressbar #my-custom-progressbar-id').css('width', '100%');
+                                if (r.report) {
+                                    $("#identifier .re_succes_import").show();
+                                    $("#identifier #re_succes_import").show();
+                                }
+                                $('#progressBar').closest('div').slideUp(800);
+                            }, 'json');
+                        };
+                        
+                        var step = function(delay) {
+                            delay = delay || 2000;
+                            var timer_id = setTimeout(function() {
+                                $.post(url, { processId:processId }, 
+                                    function(r) {
+                                        if (!r) {
+                                            step(3000);
+                                        } else if (r && r.ready) {
+                                            cleanup();
+                                        } else if (r && r.error) {
+                                        } else {
+                                            if (r && r.progress) {
+                                                var progress = parseFloat(r.progress.replace(/,/, '.'));
+                                                $('.progressbar #my-custom-progressbar-id').css('width', progress+'%');
+                                                $('#progressData').text(progress+'%');
+                                            }
+                                            if (r && r.warning) {
+                                            }
+                                            step();
+                                        }
+                                    }, 
+                                'json').error(function() {
+                                    step(3000);
+                                });
+                            }, delay);
+                            pull.push(timer_id);
+                        };
+                        
+                        $.post(url, f.serialize() , 
+                            function(r) {
+                                $('#productImport').closest('.field').hide();
+                                $('.progressbar #my-custom-progressbar-id').css('width', '0%');
+                                $('#progressData').text('0%');
+                                $('#progressBar').show();
+                                $('.reportData').hide();
+                                if (r && r.processId) {
+                                    processId = r.processId;
+                                    step(1000);   // invoke Runner
+                                    step();         // invoke Messenger
+                                } else if (r && r.error) {
+                                    $("#identifier .re_succes_import").show();
+                                    $("#identifier #re_error_import").text(r.error);
+                                    $("#identifier #re_error_import").show();
+                                } else {
+                                    $("#identifier .re_succes_import").show();
+                                    $("#identifier #re_error_import").text('Server error');
+                                    $("#identifier #re_error_import").show();
+                                }
+                            }, 
+                        'json').error(function() {
+                            $("#identifier .re_succes_import").show();
+                            $("#identifier #re_error_import").text('Server error');
+                            $("#identifier #re_error_import").show();
+                        });
+   });
+   
+   
+   
+   
+});
+</script>
