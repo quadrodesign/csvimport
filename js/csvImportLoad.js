@@ -170,7 +170,7 @@ function getReady(response)
                     $('select[name="regim"] option').removeAttr('selected');
                     $('select[name="regim"] option[value='+response.data.config.regim+']').attr('selected', 'selected');
                 
-                    $('input[name="configName"]').val(response.data.config.configName);
+                    $('input[name="configName"]').val(response.data.configName);
                     $('input[name="configName"]').attr('readonly', 'readonly');
                     $('#buttonSaveConfig').attr('disabled', 'disabled');
                     $('#buttonSaveConfig').removeClass('green');
