@@ -78,6 +78,7 @@ class shopCsvimportPluginBackendLoadController extends waJsonController {
                     $config = $model->query("SELECT data FROM shop_csvimport_config WHERE name='".$nameConfig."'")->fetchField();
                     $config = json_decode($config);
                     $this->response['config'] = $config;
+                    $this->response['configName'] = $nameConfig;
                 }
                 
                 
