@@ -167,7 +167,7 @@ class shopCsvimportPluginBackendAddproductsController extends waLongActionContro
                         }
                     }
                                        
-                        $data['category_id'] = 17;
+                        $data['category_id'] = 17;//здесь выставлять id категории куда падают новые товары
                         
                         if($productId && $this->data['info']['checkbox']['updateProd']){                        
                             $product_model = new shopProductModel();
