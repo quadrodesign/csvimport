@@ -125,6 +125,8 @@
                             
                             $('#addSkus input[name="skus[sku]"]').val('');
                             $('#addSkus input[name="skus[barcode]"]').val('');
+                            $('#addSkus input[name="skus[sku]"]').change();
+                            $('#addSkus input[name="skus[barcode]"]').change();
                             $('#addSkus #re_succes').fadeIn(600).delay(1000).fadeOut(700);
                             
                             if($('#embed_player').length) {
