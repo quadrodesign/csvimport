@@ -454,7 +454,7 @@ class shopCsvimportPluginBackendAddproductsController extends waLongActionContro
                                     
                                     if(!isset($skuData['price'])) {
                                         $prod = new shopProduct($productId);
-                                        $skuData['price'] = $prod['price'];
+                                        $skuData['price'] = $prod['price'] == 0 ? $prod['base_price_selectable'] : $prod['price'] ;
                                     }
                                     
                                     if(isset($razmer)) {
