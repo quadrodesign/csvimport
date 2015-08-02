@@ -223,8 +223,8 @@ class shopCsvimportPluginBackendAddproductsController extends waLongActionContro
                             if($not_update == false) {
                                 $p->save($data, true, $errors);
                             
-                                $category_products_model = new shopCategoryProductsModel();
-                                $category_products_model->add($productId, 17);
+//                                $category_products_model = new shopCategoryProductsModel();
+//                                $category_products_model->add($productId, 17);
                             }
                             
                             $skuName = $csvInfo[$this->data['info']['skuId'][1]];
