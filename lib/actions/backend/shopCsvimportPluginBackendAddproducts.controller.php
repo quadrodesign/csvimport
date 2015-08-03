@@ -112,11 +112,12 @@ class shopCsvimportPluginBackendAddproductsController extends waLongActionContro
   {
     return $this->data['offset'] >= $this->data['total_count'];
   }
-
+//TODO: Move method to Helper Class
   protected function getProductId($csvInfo)
   {
-    $identifierId = $this->data['info']['id'];
-    $explodeData = explode(':', $this->data['info'][$identifierId]);
+    $idIndex = $this->data['info']['id'];
+    $explodeData = explode(':', $this->data['info'][$idIndex]);
+    $idValue = $csvInfo[$idIndex];
     if (isset($explodeData[1])) {
       if ($explodeData[0] == 'features') {
         $feats = $this->feature_model->getByCode($explodeData[1]);
@@ -127,8 +128,8 @@ class shopCsvimportPluginBackendAddproductsController extends waLongActionContro
         $val = array();
         if ($values) {
           foreach ($values as $v) {
-            if (!empty($csvInfo[$identifierId])) {
-              if ($csvInfo[$identifierId] == $v['value']) {
+            if (!empty($idValue)) {
+              if ($idValue == $v['value']) {
                 return $this->model->query("SELECT product_id FROM shop_product_features WHERE feature_id='" . $v['feature_id'] . "' AND feature_value_id='" . $v['id'] . "'")->fetchField();
               }
             }
@@ -136,14 +137,19 @@ class shopCsvimportPluginBackendAddproductsController extends waLongActionContro
         }
         return false;
       } elseif ($explodeData[0] == 'skus') {
-        $where = $explodeData[2] . '=' . $csvInfo[$identifierId];
+        $where = $explodeData[2] . '=' . $idValue;
         return $this->model->query("SELECT product_id FROM shop_product_skus WHERE " . $where)->fetchField();
       } else {
         return false;
       }
     } else {
-      $name = $explodeData[0] == 'name' ? mysql_real_escape_string($csvInfo[$identifierId]) : $csvInfo[$identifierId];
-      return $this->model->query("SELECT id FROM shop_product WHERE " . $explodeData[0] . " = '" . $name . "'")->fetchField();
+      $idColumn = $explodeData[0];
+      $productModel = new shopProductModel();
+      $result = $productModel->getByField($idColumn, $idValue);
+      if ($result && is_array($result) && array_key_exists('id', $result)) {
+        return $result['id'];
+      }
+      return false;
     }
   }
 
