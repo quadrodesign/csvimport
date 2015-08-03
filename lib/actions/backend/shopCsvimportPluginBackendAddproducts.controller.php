@@ -142,7 +142,8 @@ class shopCsvimportPluginBackendAddproductsController extends waLongActionContro
                 return false;
             }
         } else {
-            return $this->model->query("SELECT id FROM shop_product WHERE ".$explodeData[0]." = '".$csvInfo[$identifierId]."'")->fetchField();
+            $name = $explodeData[0] == 'name' ? mysql_real_escape_string($csvInfo[$identifierId]) : $csvInfo[$identifierId] ;
+            return $this->model->query("SELECT id FROM shop_product WHERE ".$explodeData[0]." = '".$name."'")->fetchField();
         }
     }
     
