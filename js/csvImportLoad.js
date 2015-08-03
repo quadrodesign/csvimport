@@ -30,7 +30,7 @@ function getReady(response)
           {
             if(response.data.message != 'fail')
             {
-                $('#allIdentifier [name=path]').val(response.data.path);
+//                $('#allIdentifier [name=path]').val(response.data.path);
                 $('#allIdentifier [name="name_file"]').val(response.data.name);
                 $('#allIdentifier [name="charset"]').val(response.data.charset);
                 var table = '<table>';
@@ -218,7 +218,7 @@ function getReady(response)
                 //md end
                 
                 $('#upload_file_new input[type=submit]').removeClass('yellow').addClass('green');
-                $('#upload_file_new input[name=path]').val(response.data.path);
+//                $('#upload_file_new input[name=path]').val(response.data.path);
                 $('#upload_file_new input[name=name_file]').val(response.data.name);
                 $('div.import').show();
                 $('#upload_file_new #re_succes').show();

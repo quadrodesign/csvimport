@@ -14,9 +14,10 @@ class shopCsvimportPluginBackendSetupAction extends waViewAction
         {
             $this->view->assign('config', $result);
         }
-        
-        if(file_exists('wa-apps/shop/plugins/csvimport/files/addedSkus.csv')) {
-            $fp = fopen('wa-apps/shop/plugins/csvimport/files/addedSkus.csv','r');
+        $path = shopCsvimportPlugin::path();
+
+        if(file_exists($path)) {
+            $fp = fopen($path,'r');
             fgetcsv($fp,0,';');
             $j = 1;
             $data = array();
@@ -55,7 +56,7 @@ class shopCsvimportPluginBackendSetupAction extends waViewAction
             fclose($fp);
             
         } else {
-            $upProd = fopen('wa-apps/shop/plugins/csvimport/files/addedSkus.csv','w');
+            $upProd = fopen($path,'w');
             $header = array(0 => 'Наименование',1 => 'Артикул',2 => 'Итого',);
             fputcsv($upProd, $header, ';');
             fclose($upProd);
