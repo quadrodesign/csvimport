@@ -53,7 +53,7 @@ class shopCsvimportPluginBackendSearchskuController extends waJsonController {
                 
                 foreach($stocks as $s)
                 {
-                    $p['sku']['stocks'][$s['id']] = $skuInfo['stock'][$s['id']];
+                    $p['sku']['stocks'][$s['sort']] = $skuInfo['stock'][$s['id']];
                 }
                 
                 unset($product);
