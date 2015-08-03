@@ -224,7 +224,7 @@ class shopCsvimportPluginBackendAddproductsController extends waLongActionContro
                                 $p->save($data, true, $errors);
                             
                                 $category_products_model = new shopCategoryProductsModel();
-                                $category_products_model->add($productId, 17);
+                                $category_products_model->add($productId, $data['category_id']);
                             }
                             
                             $skuName = $csvInfo[$this->data['info']['skuId'][1]];
@@ -396,7 +396,7 @@ class shopCsvimportPluginBackendAddproductsController extends waLongActionContro
                                 $productId = $p->getId();
                                 
                                 $category_products_model = new shopCategoryProductsModel();
-                                $category_products_model->add($productId, 17);
+                                $category_products_model->add($productId, $data['category_id']);
                                 
                                 if(is_array($this->data['skus'])) {
                                     $skuData = array();
