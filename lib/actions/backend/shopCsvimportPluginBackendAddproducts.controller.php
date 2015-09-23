@@ -598,8 +598,8 @@ class shopCsvimportPluginBackendAddproductsController extends waLongActionContro
   protected function stocksLog($count, $simbol = null) {  
         switch ($this->data['info']['regim']) {
             case 1: $additional_text = 'Оcтаток '.$count.'. '; break;
-            case 2: $additional_text = 'Списано '.$count.'. '; break;
-            case 3: $additional_text = 'Принято '.$count.'. '; break;
+            case 2: $additional_text = 'Принято '.$count.'. '; break;
+            case 3: $additional_text = 'Списано '.$count.'. '; break;
             case 4: $additional_text = 'Оcтаток '.$count.'. '; break;
             case 5: $additional_text = $simbol == '+' ? 'Принято '.$count.'. ' : 'Списано '.$count.'.';; break;
         }
