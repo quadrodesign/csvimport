@@ -13,7 +13,7 @@ class shopCsvimportPluginBackendDeletecsvController extends waJsonController
       $skuInfo = $skus_model->getSku($id);
 
       $path = shopCsvimportPlugin::path();
-      $datas = [];
+      $datas = array();
       $file_handle = fopen($path, 'r');
       while (!feof($file_handle)) {
         $line_of_text = fgetcsv($file_handle, 0, ';');

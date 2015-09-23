@@ -260,7 +260,28 @@
                 <option value="2">Прибавить остатки</option>
                 <option value="3">Уменьшить остатки</option>
                 <option value="4">Обновить остатки (с очисткой склада)</option>
+                <option value="5">Переместить остатки</option>
             </select>  
+        </div>
+    </div>
+    <div class="field regimfive" style="display:none;">
+        <div class="name">
+          Склад получатель
+        </div>
+        <div class="value" style="margin-left: 180px!important;">
+            <select name="sklad_poluchateli">
+            {foreach $stocks as $stock}
+                <option value="{$stock.id}">{$stock.name}</option>
+            {/foreach}
+            </select>  
+        </div>
+    </div>
+    <div class="field">
+        <div class="name">
+          Комментарий
+        </div>
+        <div class="value" style="margin-left: 180px!important;">
+            <input type="text" name="text_for_stock" value=""/>  
         </div>
     </div>
     <div class="field" style="">
@@ -368,7 +389,13 @@ $(document).ready(function(){
    }); 
     
     
-    
+    $('#identifier [name=regim]').live('change', function(){
+        if($(this).val() == 5){
+            $('#identifier .regimfive').show();
+        } else {
+            $('#identifier .regimfive').hide();
+        }
+    }); 
     
     
   $('#verifiImport').live('click', function(){  

@@ -77,7 +77,7 @@ class shopCsvimportPluginBackendVerifidataController extends waLongActionControl
 
       }
 
-      if ($this->data['info']['regim'] == 3) {
+      if ($this->data['info']['regim'] == 3 || $this->data['info']['regim'] == 5) {
         if (is_numeric($key)) {
           $data = explode(':', $header);
           if ($data[0] == 'skus') {
@@ -239,7 +239,7 @@ class shopCsvimportPluginBackendVerifidataController extends waLongActionControl
 
             $skuId = $this->model->query("SELECT id FROM shop_product_skus WHERE sku = '" . $skuName . "' AND product_id = '" . $productId . "'")->fetchField();
             if ($skuId) {
-              if ($this->data['info']['regim'] == 3) {
+              if ($this->data['info']['regim'] == 3 || $this->data['info']['regim'] == 5) {
                 if (is_array($this->data['skus']['stocks'])) {
                   $skus_model = new shopProductSkusModel();
                   $skuInfo = $skus_model->getSku($skuId);

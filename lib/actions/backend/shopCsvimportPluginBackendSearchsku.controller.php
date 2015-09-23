@@ -22,7 +22,7 @@ class shopCsvimportPluginBackendSearchskuController extends waJsonController
 
         $path = shopCsvimportPlugin::path();
         $response = false;
-        $datas = [];
+        $datas = array();
 
         if (file_exists($path)) {
           $file_handle = fopen($path, 'r');
