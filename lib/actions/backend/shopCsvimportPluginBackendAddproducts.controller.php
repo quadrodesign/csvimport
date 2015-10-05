@@ -146,8 +146,7 @@ class shopCsvimportPluginBackendAddproductsController extends waLongActionContro
       }
     } else {
       $idColumn = $explodeData[0];
-      $productModel = new shopProductModel();
-      $result = $productModel->getByField($idColumn, $idValue);
+      $result = $this->product_model->getByField($idColumn, $idValue);
       if ($result && is_array($result) && array_key_exists('id', $result)) {
         return $result['id'];
       }
@@ -179,8 +178,7 @@ class shopCsvimportPluginBackendAddproductsController extends waLongActionContro
           $data['category_id'] = 17;//здесь выставлять id категории куда падают новые товары
 
           if ($productId && $this->data['info']['checkbox']['updateProd']) {
-            $product_model = new shopProductModel();
-            $product = $product_model->getById($productId);
+            $product = $this->product_model->getById($productId);
 
             $p = new shopProduct($product);
 
@@ -253,8 +251,6 @@ class shopCsvimportPluginBackendAddproductsController extends waLongActionContro
             if (is_array($this->data['skus']) && $not_update == false) {
               $skuData = array();
 
-              $skus_model = new shopProductSkusModel();
-
               $skuId = $this->model->query("SELECT id FROM shop_product_skus WHERE sku = '" . $skuName . "' AND product_id = '" . $productId . "'")->fetchField();
 
               foreach ($this->data['skus'] as $key => $value) {
@@ -274,7 +270,7 @@ class shopCsvimportPluginBackendAddproductsController extends waLongActionContro
                       }
                     }
                   } elseif ($this->data['info']['regim'] == 2) {
-                    $skuInfo = $skus_model->getSku($skuId);
+                    $skuInfo = $this->skus_model->getSku($skuId);
                     if ($skuInfo) {
                       $count = $skuInfo['count'];
                     }
@@ -311,48 +307,49 @@ class shopCsvimportPluginBackendAddproductsController extends waLongActionContro
                 }
               }
 
+              $prod = new shopProduct($productId);
               if (!isset($skuId)) {
-                $prod = new shopProduct($productId);
                 $skuData['price'] = $prod['price'] == 0 ? $prod['base_price_selectable'] : $prod['price'];
               } else {
-                $getSkuInfo = $skus_model->getSku($skuId);
-                $skuData['price'] = $getSkuInfo['price'] == 0 ? $prod['base_price_selectable'] : $getSkuInfo['price'];  
+                $getSkuInfo = $this->skus_model->getSku($skuId);
+                $skuData['price'] = $getSkuInfo['price'] == 0 ? $prod['base_price_selectable'] : $getSkuInfo['price'];
               }
 
               if (isset($razmer)) {
                 $skuData['features'][$razmer['code']] = $razmer['value'];
                 unset($razmer);
               }
-              
+
               $skuData['product_id'] = $productId;
+                if($this->data['info']['regim'] == 5) {
+                    $skuData['stock'] += self::add_to_stock($csvInfo, $skuId);
+                }
               if ($skuId && $this->data['info']['checkbox']['updateSkus']) {
-                $skus_model->update($skuId, $skuData);
+// отладка для вывода всех данных по артикулам                $this->data['skuData'] = $skuData;
+                $this->skus_model->update($skuId, $skuData);
               } else {
                 if ($this->data['info']['checkbox']['newSkus'] && !$skuId) {
                   $skuId = $this->model->query("SELECT id FROM shop_product_skus WHERE sku = '' AND product_id = '" . $productId . "'")->fetchField();
                   if ($skuId) {
-                    $skus_model->update($skuId, $skuData);
+                    $this->skus_model->update($skuId, $skuData);
                   } else {
                     $skuData['product_id'] = $productId;
-                    if ($sku = $skus_model->add($skuData)) {
+                    if ($sku = $this->skus_model->add($skuData)) {
                       $skuId = $sku['id'];
                     }
                   }
                 }
               }
-              
-              if($this->data['info']['regim'] == 5) {
-                self::add_to_stock($csvInfo, $skuId);
-              }
+
               shopProductStocksLogModel::clearContext();
             }
 
-            if (isset($this->data['images'])) {
-              foreach ($this->data['images'] as $value) {
-                $images[] = $csvInfo[$value];
-                $this->addImages($images, $productId);
-              }
-            }
+//            if (isset($this->data['images'])) {
+//              foreach ($this->data['images'] as $value) {
+//                $images[] = $csvInfo[$value];
+//                $this->addImages($images, $productId);
+//              }
+//            }
           } else {
             if (isset($this->data['info']['checkbox']['newProd'])) {
               $p = new shopProduct();
@@ -427,8 +424,6 @@ class shopCsvimportPluginBackendAddproductsController extends waLongActionContro
                     }
                   }
 
-                  $skus_model = new shopProductSkusModel();
-
                   $skuId = $this->model->query("SELECT id FROM shop_product_skus WHERE sku = '" . $skuName . "' AND product_id = '" . $productId . "'")->fetchField();
 
                   foreach ($this->data['skus'] as $key => $value) {
@@ -459,8 +454,8 @@ class shopCsvimportPluginBackendAddproductsController extends waLongActionContro
                       $skuData['available'] = 0;
                     }
                   }
-                  
-                  $getSkuInfo = $skus_model->getSku($skuId);
+
+                  $getSkuInfo = $this->skus_model->getSku($skuId);
                   $skuData['price'] = $getSkuInfo['price'];
                   if (!isset($skuData['price'])) {
                     $prod = new shopProduct($productId);
@@ -473,15 +468,15 @@ class shopCsvimportPluginBackendAddproductsController extends waLongActionContro
                   }
 
                   if ($skuId && $this->data['info']['checkbox']['updateSkus']) {
-                    $skus_model->update($skuId, $skuData);
+                    $this->skus_model->update($skuId, $skuData);
                   } else {
                     if ($this->data['info']['checkbox']['newSkus'] && !$skuId) {
                       $skuId = $this->model->query("SELECT id FROM shop_product_skus WHERE sku = '' AND product_id = '" . $productId . "'")->fetchField();
                       if ($skuId) {
-                        $skus_model->update($skuId, $skuData);
+                        $this->skus_model->update($skuId, $skuData);
                       } else {
                         $skuData['product_id'] = $productId;
-                        if ($sku = $skus_model->add($skuData)) {
+                        if ($sku = $this->skus_model->add($skuData)) {
                           $skuId = $sku['id'];
                         }
                       }
@@ -490,13 +485,13 @@ class shopCsvimportPluginBackendAddproductsController extends waLongActionContro
                 }
               }
 
-              if ($this->data['images']) {
-                foreach ($this->data['images'] as $value) {
-                  $images[] = $csvInfo[$value];
-                  $this->addImages($images, $productId);
-                  unset($images);
-                }
-              }
+//              if ($this->data['images']) {
+//                foreach ($this->data['images'] as $value) {
+//                  $images[] = $csvInfo[$value];
+//                  $this->addImages($images, $productId);
+//                  unset($images);
+//                }
+//              }
 
               if ($this->data['features']) {
                 $dataFeat = array();
@@ -550,63 +545,54 @@ class shopCsvimportPluginBackendAddproductsController extends waLongActionContro
     fclose($fp);
     sleep(1);
   }
-  
-  protected function reduce_stock($csvInfo, $skuId){
-    $skuInfo = $this->skus_model->getSku($skuId);
-    if ($skuInfo) {
-      $count = $skuInfo['count'] ? $skuInfo['count'] : 0;
-    }
 
-    $skuData['count'] = $csvInfo[$value[0]] - $count;
-    unset($this->data['skus']['stocks'][0]);
-    unset($count);
+  protected function reduce_stock($csvInfo, $skuId){
+    $skuData = array();
+    $skuInfo = $this->skus_model->getSku($skuId);
     $all_data_ccount = 0;
     if (count($this->data['skus']['stocks'])) {
-      foreach ($this->data['skus']['stocks'] as $stock_id => $stock) {
-        if ($skuInfo) {
-          $count = $skuInfo['stock'][$stock_id] ? $skuInfo['stock'][$stock_id] : 0;
+        foreach ($this->data['skus']['stocks'] as $stock_id => $stock) {
+            if ($skuInfo) {
+                $count = $skuInfo['stock'][$stock_id] ? $skuInfo['stock'][$stock_id] : 0;
+            }
+            if ($csvInfo[$stock] || $csvInfo[$stock] === 0) {
+                $skuData['stock'][$stock_id] = $count - $csvInfo[$stock];
+                $all_data_ccount += $csvInfo[$stock];
+            }
+            unset($count);
         }
-        if ($csvInfo[$stock] || $csvInfo[$stock] === 0) {
-          $skuData['stock'][$stock_id] = $count - $csvInfo[$stock];
-          $all_data_ccount += $csvInfo[$stock];
-        }
-        unset($count);
-      }
     }
-    
+
     self::stocksLog($all_data_ccount);
     return $skuData;
   }
-  
+
   protected function add_to_stock($csvInfo, $skuId) {
     $skuInfo = $this->skus_model->getSku($skuId);
-    
+
     $all_data_ccount = 0;
-    if (count($this->data['skus']['stocks'])) {
+    if (count($this->data['skus']['stocks'])) { //пробегаем все колонки складские
       foreach ($this->data['skus']['stocks'] as $stock_id => $stock) {
         if ($csvInfo[$stock] || $csvInfo[$stock] === 0) {
           $all_data_ccount += $csvInfo[$stock];
         }
       }
     }
-    
+
     $sklad_count = $skuInfo['stock'][$this->data['info']['sklad_poluchateli']] ? $skuInfo['stock'][$this->data['info']['sklad_poluchateli']] : 0;
-    $sku['stock'][$this->data['info']['sklad_poluchateli']] = $sklad_count + $all_data_ccount;
-    
-    self::stocksLog($all_data_ccount, '+');
-    $this->skus_model->update($skuId, $sku);
-    
+      return array( $this->data['info']['sklad_poluchateli'] => ($sklad_count + $all_data_ccount));
+
   }
-  
-  protected function stocksLog($count, $simbol = null) {  
+
+  protected function stocksLog($count, $simbol = null) {
         switch ($this->data['info']['regim']) {
             case 1: $additional_text = 'Оcтаток '.$count.'. '; break;
             case 2: $additional_text = 'Принято '.$count.'. '; break;
             case 3: $additional_text = 'Списано '.$count.'. '; break;
             case 4: $additional_text = 'Оcтаток '.$count.'. '; break;
-            case 5: $additional_text = $simbol == '+' ? 'Принято '.$count.'. ' : 'Списано '.$count.'.';; break;
+            case 5: $additional_text = 'Перемещено '.$count.'. '; break;
         }
-        
+
         shopProductStocksLogModel::setContext(
             shopProductStocksLogModel::TYPE_PRODUCT,
             $additional_text.$this->data['info']['text_for_stock']
