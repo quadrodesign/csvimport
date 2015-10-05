@@ -314,21 +314,23 @@ class shopCsvimportPluginBackendAddproductsController extends waLongActionContro
               if (!isset($skuId)) {
                 $prod = new shopProduct($productId);
                 $skuData['price'] = $prod['price'] == 0 ? $prod['base_price_selectable'] : $prod['price'];
+              } else {
+                $getSkuInfo = $skus_model->getSku($skuId);
+                $skuData['price'] = $getSkuInfo['price'] == 0 ? $prod['base_price_selectable'] : $getSkuInfo['price'];  
               }
 
               if (isset($razmer)) {
                 $skuData['features'][$razmer['code']] = $razmer['value'];
                 unset($razmer);
               }
-
+              
+              $skuData['product_id'] = $productId;
               if ($skuId && $this->data['info']['checkbox']['updateSkus']) {
-                unset($skuData['price']);
                 $skus_model->update($skuId, $skuData);
               } else {
                 if ($this->data['info']['checkbox']['newSkus'] && !$skuId) {
                   $skuId = $this->model->query("SELECT id FROM shop_product_skus WHERE sku = '' AND product_id = '" . $productId . "'")->fetchField();
                   if ($skuId) {
-                    unset($skuData['price']);
                     $skus_model->update($skuId, $skuData);
                   } else {
                     $skuData['product_id'] = $productId;
@@ -457,7 +459,9 @@ class shopCsvimportPluginBackendAddproductsController extends waLongActionContro
                       $skuData['available'] = 0;
                     }
                   }
-
+                  
+                  $getSkuInfo = $skus_model->getSku($skuId);
+                  $skuData['price'] = $getSkuInfo['price'];
                   if (!isset($skuData['price'])) {
                     $prod = new shopProduct($productId);
                     $skuData['price'] = $prod['price'] == 0 ? $prod['base_price_selectable'] : $prod['price'];
@@ -474,7 +478,6 @@ class shopCsvimportPluginBackendAddproductsController extends waLongActionContro
                     if ($this->data['info']['checkbox']['newSkus'] && !$skuId) {
                       $skuId = $this->model->query("SELECT id FROM shop_product_skus WHERE sku = '' AND product_id = '" . $productId . "'")->fetchField();
                       if ($skuId) {
-                        unset($skuData['price']);
                         $skus_model->update($skuId, $skuData);
                       } else {
                         $skuData['product_id'] = $productId;
