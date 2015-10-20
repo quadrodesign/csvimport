@@ -155,6 +155,13 @@ function getReady(response)
                     $('.skusIdentifier[name="skuId[1]"] option').removeAttr('selected'); 
                     $('.skusIdentifier[name="skuId[1]"] option[value='+response.data.config.skuId[1]+']').attr('selected','selected');
                     
+                    //Коментарий в логах из настроек
+                    $('#identifier [name="text_for_stock"]').val(response.data.config.text_for_stock);
+                    
+                    //склад получателя из настроек
+                    $('#identifier [name="sklad_poluchateli"] option').removeAttr('selected'); 
+                    $('#identifier [name="sklad_poluchateli"] option[value='+response.data.config.sklad_poluchateli+']').attr('selected','selected');
+                    
                     $('#tableImport *').removeClass('bfb');
                     $('#tableImport [data-id="'+response.data.config.skuId[1]+'"]').addClass('bfb');
                     if(response.data.config.separator) {
@@ -169,6 +176,7 @@ function getReady(response)
                     
                     $('select[name="regim"] option').removeAttr('selected');
                     $('select[name="regim"] option[value='+response.data.config.regim+']').attr('selected', 'selected');
+                    $('select[name="regim"]').change();
                 
                     $('input[name="configName"]').val(response.data.configName);
                     $('input[name="configName"]').attr('readonly', 'readonly');
