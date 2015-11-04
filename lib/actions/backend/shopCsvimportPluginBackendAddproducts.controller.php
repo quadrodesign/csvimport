@@ -260,7 +260,7 @@ class shopCsvimportPluginBackendAddproductsController extends waLongActionContro
                     unset($this->data['skus']['stocks'][0]);
                     if (count($this->data['skus']['stocks'])) {
                       foreach ($this->data['skus']['stocks'] as $stock_id => $stock) {
-                        if ($csvInfo[$stock] || $csvInfo[$stock] === 0) {
+                        if (is_numeric($csvInfo[$stock])) {
                           $skuData['stock'][$stock_id] = $csvInfo[$stock];
                           self::stocksLog($csvInfo[$stock]);
                           if ($csvInfo[$stock] > 0) {
@@ -275,7 +275,7 @@ class shopCsvimportPluginBackendAddproductsController extends waLongActionContro
                       $count = $skuInfo['count'];
                     }
 
-                    if ($csvInfo[$value[0]] || $csvInfo[$value[0]] === 0) {
+                    if (is_numeric($csvInfo[$value[0]])) {
                       $skuData['count'] = $csvInfo[$value[0]] + $count;
                     }
                     unset($this->data['skus']['stocks'][0]);
@@ -285,7 +285,7 @@ class shopCsvimportPluginBackendAddproductsController extends waLongActionContro
                         if ($skuInfo) {
                           $count = $skuInfo['stock'][$stock_id] ? $skuInfo['stock'][$stock_id] : 0;
                         }
-                        if ($csvInfo[$stock] || $csvInfo[$stock] === 0) {
+                        if (is_numeric($csvInfo[$stock])) {
                           $skuData['stock'][$stock_id] = $csvInfo[$stock] + $count;
                           self::stocksLog($csvInfo[$stock]);
                         }
@@ -435,7 +435,7 @@ class shopCsvimportPluginBackendAddproductsController extends waLongActionContro
                       unset($this->data['skus']['stocks'][0]);
                       if (count($this->data['skus']['stocks'])) {
                         foreach ($this->data['skus']['stocks'] as $stock_id => $stock) {
-                          if ($csvInfo[$stock]) {
+                          if (is_numeric($csvInfo[$stock])) {
                             $skuData['stock'][$stock_id] = $csvInfo[$stock];
                             if ($csvInfo[$stock] > 0) {
                               $is_available = true;
@@ -555,7 +555,7 @@ class shopCsvimportPluginBackendAddproductsController extends waLongActionContro
             if ($skuInfo) {
                 $count = $skuInfo['stock'][$stock_id] ? $skuInfo['stock'][$stock_id] : 0;
             }
-            if ($csvInfo[$stock] || $csvInfo[$stock] === 0) {
+            if (is_numeric($csvInfo[$stock])) {
                 $skuData['stock'][$stock_id] = $count - $csvInfo[$stock];
                 $all_data_ccount += $csvInfo[$stock];
             }
@@ -573,7 +573,7 @@ class shopCsvimportPluginBackendAddproductsController extends waLongActionContro
     $all_data_ccount = 0;
     if (count($this->data['skus']['stocks'])) { //пробегаем все колонки складские
       foreach ($this->data['skus']['stocks'] as $stock_id => $stock) {
-        if ($csvInfo[$stock] || $csvInfo[$stock] === 0) {
+        if (is_numeric($csvInfo[$stock])) {
           $all_data_ccount += $csvInfo[$stock];
         }
       }
